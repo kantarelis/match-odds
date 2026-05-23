@@ -7,6 +7,7 @@ line-level suppression. Remove entries as their real consumers land in later epi
 
 from matchodds import __metadata__
 from matchodds.config import Settings, settings
+from matchodds.data import sources
 from matchodds.data.schema import Match
 
 __metadata__.__repository__
@@ -18,7 +19,6 @@ settings.rolling_window_n
 settings.leagues
 settings.seasons_back
 settings.football_data_base_url
-settings.openfootball_base_url
 settings.repo_root
 settings.data_dir
 settings.models_dir
@@ -39,3 +39,7 @@ Match.odds_draw
 Match.odds_away
 Match.source
 Match._check_consistency
+
+# data.sources — entrypoints called by `make data` / the matches builder (Task 5).
+sources.download_all
+sources.load_raw

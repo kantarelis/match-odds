@@ -10,3 +10,5 @@ pyarrow>=24,<25
 # Match record validated at the ingestion edge (see CLAUDE.md → Data & validation layers).
 pydantic>=2.9,<3
 pydantic-settings>=2.5,<3
+# HTTP client for the data-acquisition step (matchodds.data.sources).
+httpx>=0.27,<1

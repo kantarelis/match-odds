@@ -4,7 +4,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 **Branch:** `epic-02-data`
 
-**Goal.** Turn public multi-source CSVs into one clean, canonical **master matches table** — reproducibly, with no committed working data. This is the small ETL that carries the Data-Engineer signal and feeds Epic 03's feature pipeline.
+**Goal.** Turn public football-data.co.uk CSVs into one clean, canonical **master matches table** — reproducibly, with no committed working data. This is the small ETL that carries the Data-Engineer signal and feeds Epic 03's feature pipeline.
 
 ## Progress
 
@@ -12,7 +12,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 |------|----------------------------------------------------------------|----------------|--------|
 | 1    | Data deps, `config` → pydantic `Settings`, parquet engine      | ✅ Done        | —      |
 | 2    | `data.schema` — Pydantic `Match` model + validation            | ✅ Done        | —      |
-| 3    | `data.sources` — download clients + version manifest           | ⬜ Not started | —      |
+| 3    | `data.sources` — download client + version manifest            | ✅ Done        | —      |
 | 4    | `data.teams` — canonical team-name normalization               | ⬜ Not started | —      |
 | 5    | `data.matches` — build master table + `make data`              | ⬜ Not started | —      |
 | 6    | `01_data.ipynb` + wire `make nb-run` into CI                   | ⬜ Not started | —      |
@@ -27,7 +27,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 2. **Parquet engine on Python 3.14 — RESOLVED (Task 1):** `pyarrow` 24.0.0 ships a cp314 wheel (Epic 01's failure was the old `<21` cap excluding it). Pinned `pyarrow>=24,<25`; **`matches.parquet` stays** — no gzip-CSV fallback needed.
 3. **`config.py` graduates to a pydantic-settings `Settings`** with a `MATCHODDS_` env prefix — this is what lets CI point the notebook at sample fixtures via env overrides.
 4. **Scope default:** the 6 leagues already in `config` + the **last 10 completed seasons** each (`settings.seasons_back`, configurable).
-5. **football-data.co.uk has two layouts** the source client must handle: the big-5 per-season files (`E0`, `D1`, `SP1`, `I1`, `F1`, …) and the combined "new/extra leagues" file that carries the **Greek Super League** (different columns / fewer odds).
+5. **Single source, one layout (revised after probing).** football-data.co.uk covers all 6 leagues — including the **Greek Super League (`G1`)** — in the *same* `mmz4281/{season}/{div}.csv` format with odds. openfootball was dropped: its CSVs are stale (end 2020-21), carry no Greek data, and have no odds. No dual-layout handling, no second source.
 
 **Out of scope (their own epics):** feature engineering (Epic 03), any modelling (Epic 04), the serving schemas (Epic 05). No features are computed here — this epic stops at the clean master matches table.
 
@@ -65,23 +65,27 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 3 — `data.sources`: download clients + version manifest
+## Task 3 — `data.sources`: download client + version manifest — ✅ Done
 
-**Scope.**
-- `src/matchodds/data/sources.py`: clients fetching football-data.co.uk (**both layouts**, Decision 5) and openfootball CSVs into `settings.raw_dir`. Pinned base URLs; cache (skip re-download unless `force=True`); polite timeout + retry. Write `raw/_manifest.json` recording source URLs, filenames, fetch timestamp, and per-file checksums (the data-versioning record).
-- `tests/unit/test_sources.py`: URL/path construction per league+season; parsing of tiny **committed sample CSVs** for each layout (offline); manifest written correctly. The real network fetch is verified by a `tests/manual/` smoke I run during implementation (not part of `make test`).
+**Outcome.**
+- `src/matchodds/data/sources.py`: `season_code` / `recent_seasons` (July season cutover) / `file_url`; a retrying `_download` that tolerates 404 (unpublished season → skip); `download_all` (caches into `raw_dir`, writes `raw/_manifest.json` with per-file sha256 + bytes); `load_raw`. `DIVISIONS` maps the 6 in-scope leagues incl. Greece (`G1`) to football-data.co.uk div codes.
+- `tests/unit/test_sources.py`: 6 offline tests (season code, July cutover, URL, `load_raw` columns, `download_all` writes files+manifest with a mocked fetch, cache reuse) against a committed `tests/fixtures/footballdata_sample.csv`.
+- Moved `httpx` to core `requirements.txt`; removed the orphaned `openfootball_base_url`.
 
-**Acceptance criteria.** Offline tests pass; a real fetch of one league-season verified locally during implementation; `make check` + `make test` green.
+**Decisions / deviations (recorded).**
+- **Single-source football-data.co.uk** (probing showed openfootball is stale to 2020-21, has no Greece, and no odds). Greece is `G1` in the *same* main layout → **Decision 5's "dual layout" is void**; no second source. CLAUDE.md / MASTER_PLAN data-source sections updated.
+- **Manifest is a plain dict → JSON** (loose versioning metadata); pydantic stays reserved for row-level validation (`Match`).
+- `download_all` is **404-tolerant** (records only fetched files), so Greece's shorter history won't break a full run.
 
-**Verification.** `pytest -k sources -v`; one real `sources` fetch locally.
+**Verification.** Real fetch of `E0` 2023-24 → 380 rows, core columns + `B365H` odds present; `make check` → PASS; `make test` → **19 passed** (4 metadata + 9 schema + 6 sources). ✅
 
 ---
 
 ## Task 4 — `data.teams`: canonical team-name normalization
 
 **Scope.**
-- `src/matchodds/data/teams.py`: a canonical team-name map across sources for the in-scope leagues + `normalize(raw, league) -> canonical`. Built from the **real raw spellings** observed via Task 3. Unknown names raise a clear error — never silently pass through.
-- `tests/fixtures/raw_team_names.txt`: every distinct raw home/away name seen across sources (generated during implementation), so the resolution test runs **offline**.
+- `src/matchodds/data/teams.py`: a canonical team-name map for the football-data.co.uk spellings across the in-scope leagues + `normalize(raw, league) -> canonical`. Built from the **real raw spellings** observed via Task 3. Unknown names raise a clear error — never silently pass through.
+- `tests/fixtures/raw_team_names.txt`: every distinct raw home/away name seen in the downloaded files (generated during implementation), so the resolution test runs **offline**.
 - `tests/unit/test_teams.py`: assert every name in the fixture resolves; an unmapped name raises.
 
 **Acceptance criteria.** 100% of in-scope raw names resolve; unmapped names fail loudly; `make check` + `make test` green.

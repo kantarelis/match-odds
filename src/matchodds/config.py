@@ -37,9 +37,8 @@ class Settings(BaseSettings):
     leagues: tuple[str, ...] = _DEFAULT_LEAGUES
     seasons_back: int = 10
 
-    # Public data sources (specifics finalised in Task 3).
+    # Public data source (football-data.co.uk).
     football_data_base_url: str = "https://www.football-data.co.uk/mmz4281/"
-    openfootball_base_url: str = "https://raw.githubusercontent.com/openfootball/"
 
     # Filesystem layout. ``data_dir`` is the env-overridable root; raw/processed derive from it.
     repo_root: Path = _REPO_ROOT

@@ -61,7 +61,7 @@ src/matchodds/               # The importable package — single source of truth
 ├── __metadata__.py          # Project metadata: version, author, license (single source of truth)
 ├── config.py                # Leagues in scope, data paths, RANDOM_SEED, rolling-window N
 ├── data/                    # Acquisition + cleaning (the small ETL — Data Engineer signal)
-│   ├── sources.py           # football-data.co.uk + openfootball download clients (pinned URLs)
+│   ├── sources.py           # football-data.co.uk download client + version manifest (pinned URLs)
 │   ├── teams.py             # Team-name normalization across sources (canonical name map)
 │   └── matches.py           # Builds the master matches table → data/processed/matches.parquet
 ├── features/                # Feature pipeline (leakage-free)
@@ -92,7 +92,7 @@ demo/                        # Streamlit demo ("odds this weekend")
 └── app.py                   # Calls the inference service; renders home/draw/away probabilities
 
 data/                        # GITIGNORED — never committed
-├── raw/                     # Raw downloaded CSVs (football-data.co.uk, openfootball)
+├── raw/                     # Raw downloaded CSVs (football-data.co.uk)
 └── processed/               # Cleaned master matches table + feature tables (parquet)
 
 models/                      # Saved artifacts
@@ -222,11 +222,11 @@ class PredictManager:
 
 ## Data Sources (all public, no scraping)
 
-- **football-data.co.uk** — historical results + closing bookmaker odds (used for the baseline and the betting-edge appendix). Pinned download URLs in `matchodds.data.sources`.
-- **openfootball CSVs** — multi-league depth (used to broaden league coverage).
-- **Leagues in scope (default):** Greek Superleague (the local-recruiter angle) + the top-5 EU leagues (EPL, La Liga, Serie A, Bundesliga, Ligue 1). The exact set lives in `config.py`.
+- **football-data.co.uk** — the single source: one CSV per league-season at `mmz4281/{season}/{div}.csv`, one consistent layout with full-time results **and bookmaker odds**, covering every in-scope league including the **Greek Super League (`G1`)**. Division codes + pinned URLs live in `matchodds.data.sources`.
+- **Leagues in scope (default):** Greek Super League (`G1`, the local-recruiter angle) + the top-5 EU leagues — England (`E0`), Spain (`SP1`), Italy (`I1`), Germany (`D1`), France (`F1`). The set lives in `config.py`.
+- **openfootball was evaluated and dropped** — its CSVs are stale (end 2020-21), carry no Greek data, and have no odds; football-data.co.uk supersedes it on all three.
 
-Team names differ across sources — `matchodds.data.teams` holds the canonical normalization map; adding a league means extending that map, with a unit test asserting every raw name resolves.
+Team-name spellings vary across seasons — `matchodds.data.teams` holds the canonical normalization map; adding a league/team means extending that map, with a unit test asserting every raw name resolves.
 
 ## Tech Stack
 
