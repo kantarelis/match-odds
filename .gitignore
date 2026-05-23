@@ -36,3 +36,6 @@ htmlcov/
 
 # --- Notebooks ---
 .ipynb_checkpoints/
+
+# --- Built sample table (rebuilt offline from tests/fixtures/sample/raw) ---
+tests/fixtures/sample/processed/

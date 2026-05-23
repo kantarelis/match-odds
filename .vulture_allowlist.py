@@ -7,7 +7,7 @@ line-level suppression. Remove entries as their real consumers land in later epi
 
 from matchodds import __metadata__
 from matchodds.config import Settings, settings
-from matchodds.data import sources, teams
+from matchodds.data import matches, sources, teams
 from matchodds.data.schema import Match
 
 __metadata__.__repository__
@@ -46,3 +46,6 @@ sources.load_raw
 
 # data.teams — normalize() consumed by the matches builder (Task 5).
 teams.normalize
+
+# data.matches — load() consumed by notebooks / the feature pipeline (Epic 03).
+matches.load

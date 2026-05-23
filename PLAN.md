@@ -15,7 +15,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 3    | `data.sources` — download client + version manifest            | ✅ Done        | —      |
 | 4    | `data.teams` — canonical team-name normalization               | ✅ Done        | —      |
 | 5    | `data.matches` — build master table + `make data`              | ✅ Done        | —      |
-| 6    | `01_data.ipynb` + wire `make nb-run` into CI                   | ⬜ Not started | —      |
+| 6    | `01_data.ipynb` + wire `make nb-run` into CI                   | ✅ Done        | —      |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
 
@@ -117,16 +117,16 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 6 — `01_data.ipynb` + wire `make nb-run` into CI
+## Task 6 — `01_data.ipynb` + wire `make nb-run` into CI — ✅ Done
 
-**Scope.**
-- `notebooks/01_data.ipynb`: a thin narrative importing `matchodds.data` — load the processed table, show coverage per league/season, and sanity-check (row counts, date ranges, missing-odds rate, goal distributions). Cells import from the package; no heavy logic inline (keeps `nbqa` trivial).
-- `tests/fixtures/sample/`: a tiny committed sample dataset; CI runs the notebook against it **offline** by overriding `MATCHODDS_*` paths (pydantic-settings env), so `make nb-run` is deterministic and network-free.
-- Wire `make nb-run` into `.github/workflows/ci.yml` (the step Epic 01 deferred); `make nb-lint` now actively lints the notebook (must pass `nbqa` isort/black/flake8).
+**Outcome.**
+- `notebooks/01_data.ipynb`: thin narrative over `matchodds.data` — load via `matches.load()`, coverage per league + season×league, outcome/odds/goal sanity checks; no heavy logic inline.
+- `src/matchodds/data/matches.py`: added `load()` (read the built parquet).
+- `makefile`: `install-dev` registers a `python3` ipykernel; `nb-run` executes every notebook via papermill.
+- `.github/workflows/ci.yml`: an offline notebook-smoke step — builds a tiny sample table from a committed CSV (`MATCHODDS_DATA_DIR` override, no network) then runs `make nb-run`.
+- `tests/fixtures/sample/raw/E0_2324.csv` committed; the built `sample/processed/` is gitignored.
 
-**Acceptance criteria.** `make nb-lint` passes on the notebook; `make nb-run` executes it headless against the sample (offline); CI runs both steps; `make check` + `make test` green.
-
-**Verification.** `make nb-lint && make nb-run`; re-parse `ci.yml`.
+**Verification.** `make nb-lint` PASS; `make nb-run` PASS on **real data (20k rows)** and the **offline sample (2 rows)**; `make check` → PASS; `make test` → **27 passed**; `ci.yml` parses with the notebook-smoke step. ✅
 
 ---
 

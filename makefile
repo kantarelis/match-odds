@@ -44,6 +44,7 @@ install: $(VENV)
 install-dev: $(VENV)
 	$(PIP) install -e .
 	$(PIP) install -r requirements-dev.txt -r requirements-test.txt
+	$(PY) -m ipykernel install --sys-prefix --name python3 >/dev/null 2>&1 || true
 
 .PHONY: install-test
 install-test: $(VENV)
@@ -114,4 +115,9 @@ down:
 demo:
 	@echo "make demo — not implemented until Epic 06 (Streamlit demo)."
 nb-run:
-	@echo "make nb-run — not implemented until Epic 02 (first notebook)."
+	@if ls notebooks/*.ipynb >/dev/null 2>&1; then \
+		for nb in notebooks/*.ipynb; do \
+			echo "executing $$nb"; \
+			$(PY) -m papermill "$$nb" "/tmp/$$(basename $$nb)" -k python3; \
+		done; \
+	else echo "nb-run: no notebooks yet — skipping"; fi

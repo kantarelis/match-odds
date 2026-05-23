@@ -140,6 +140,11 @@ def build(write: bool = True) -> pd.DataFrame:
     return table
 
 
+def load() -> pd.DataFrame:
+    """Load the built master matches table from ``processed_dir``."""
+    return pd.read_parquet(settings.processed_dir / "matches.parquet")
+
+
 def main() -> None:
     sources.download_all()
     table = build()
