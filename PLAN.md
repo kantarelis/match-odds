@@ -10,7 +10,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 | Task | Description                                                    | Status         | Commit |
 |------|----------------------------------------------------------------|----------------|--------|
-| 1    | Data deps, `config` → pydantic `Settings`, parquet engine      | ⬜ Not started | —      |
+| 1    | Data deps, `config` → pydantic `Settings`, parquet engine      | ✅ Done        | —      |
 | 2    | `data.schema` — Pydantic `Match` model + validation            | ⬜ Not started | —      |
 | 3    | `data.sources` — download clients + version manifest           | ⬜ Not started | —      |
 | 4    | `data.teams` — canonical team-name normalization               | ⬜ Not started | —      |
@@ -24,7 +24,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 ## Decisions baked in (flag at review to change)
 
 1. **CI/tests are offline & deterministic.** Unit tests and the CI notebook run use **tiny committed fixtures** under `tests/fixtures/` (a few rows per source); **real downloads happen only via `make data` locally**. CI never depends on `football-data.co.uk` being up. (These fixtures are small test artifacts, not the working dataset — they live under `tests/`, not the gitignored `data/`.)
-2. **Parquet engine on Python 3.14 (Task 1 resolves it).** `pyarrow` has no cp314 wheel (it broke Epic 01's install). Task 1 tries `pyarrow` → `fastparquet` for a cp314 wheel; **if neither resolves, the processed table is written as gzip-CSV (`matches.csv.gz`)** and the MASTER_PLAN "`matches.parquet`" exit criterion is amended. Decision recorded in the Task 1 outcome.
+2. **Parquet engine on Python 3.14 — RESOLVED (Task 1):** `pyarrow` 24.0.0 ships a cp314 wheel (Epic 01's failure was the old `<21` cap excluding it). Pinned `pyarrow>=24,<25`; **`matches.parquet` stays** — no gzip-CSV fallback needed.
 3. **`config.py` graduates to a pydantic-settings `Settings`** with a `MATCHODDS_` env prefix — this is what lets CI point the notebook at sample fixtures via env overrides.
 4. **Scope default:** the 6 leagues already in `config` + the **last 10 completed seasons** each (`settings.seasons_back`, configurable).
 5. **football-data.co.uk has two layouts** the source client must handle: the big-5 per-season files (`E0`, `D1`, `SP1`, `I1`, `F1`, …) and the combined "new/extra leagues" file that carries the **Greek Super League** (different columns / fewer odds).
@@ -33,17 +33,20 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 1 — Data deps, `config` → pydantic `Settings`, parquet engine
+## Task 1 — Data deps, `config` → pydantic `Settings`, parquet engine — ✅ Done
 
-**Scope.**
-- `requirements.txt`: add `pydantic` (2.x) + `pydantic-settings` (verified to install on 3.14). Resolve the parquet engine per Decision 2 and add whichever works (or none → gzip-CSV).
-- `src/matchodds/config.py`: graduate to a typed `Settings(BaseSettings)` (`env_prefix = "MATCHODDS_"`): `random_seed`, `rolling_window_n`, `leagues`, `seasons_back` (default 10), `raw_dir` / `processed_dir` (env-overridable), and source config. Expose a module-level `settings = Settings()`.
-- `pyproject.toml`: add `plugins = ["pydantic.mypy"]` to `[tool.mypy]`.
-- Update existing consumers: `tests/unit/test_metadata.py` and `.vulture_allowlist.py` to the new `settings` API.
+**Outcome.**
+- `requirements.txt`: added `pyarrow>=24,<25`, `pydantic>=2.9,<3`, `pydantic-settings>=2.5,<3`.
+- `src/matchodds/config.py`: now a typed `Settings(BaseSettings)` (env prefix `MATCHODDS_`) — `random_seed`, `rolling_window_n`, `leagues`, `seasons_back`, source base URLs, `repo_root` / `data_dir` / `models_dir`, plus derived `raw_dir` / `processed_dir` properties; module-level `settings = Settings()`.
+- `pyproject.toml`: `pydantic.mypy` plugin enabled.
+- `tests/unit/test_metadata.py` + `.vulture_allowlist.py` moved to the `settings` API; added an env-override test.
 
-**Acceptance criteria.** `make install-dev` resolves on 3.14 (pydantic + parquet engine, or CSV fallback recorded); `make check` clean with the pydantic mypy plugin active; `make test` green; `settings` exposes typed fields and honours an env override (e.g. `MATCHODDS_PROCESSED_DIR=/tmp/x`).
+**Decisions / deviations (recorded).**
+- **Parquet stays — `pyarrow>=24`.** 24.0.0 ships a cp314 wheel; Epic 01's failure was the old `<21` cap. No gzip-CSV fallback; `matches.parquet` remains the output format.
+- **Path model:** `data_dir` is the single env-overridable root; `raw_dir`/`processed_dir` are derived read-only properties (override `MATCHODDS_DATA_DIR` to redirect both — covers the CI need, keeps non-optional `Path` typing).
+- **Dropped `env_file`** from the settings config to avoid a `python-dotenv` dependency — env-var overrides only.
 
-**Verification.** `make install-dev && make check && make test`; a one-liner asserting the env override is reflected in `settings`.
+**Verification.** `make install-dev` → OK (pyarrow 24.0.0, parquet round-trip works); `make check` → PASS (pydantic.mypy active, vulture clean); `make test` → **4 passed** (incl. env override). ✅
 
 ---
 
