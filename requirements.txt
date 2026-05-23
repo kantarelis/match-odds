@@ -5,5 +5,8 @@ numpy>=1.26,<3
 scikit-learn>=1.5,<2
 xgboost>=2.1,<3
 joblib>=1.4,<2
-# pyarrow — parquet engine, added in Epic 02. Deferred: no cp314 wheel yet (builds from
-# source and fails). Re-evaluate pyarrow vs. fastparquet on Python 3.14 when Epic 02 lands.
+pyarrow>=24,<25
+# Validation & config (Epic 02+): Pydantic owns API schemas, the typed Settings, and the
+# Match record validated at the ingestion edge (see CLAUDE.md → Data & validation layers).
+pydantic>=2.9,<3
+pydantic-settings>=2.5,<3

@@ -5,15 +5,21 @@ This is a project-wide configuration artifact (the gate-approved path in CLAUDE.
 line-level suppression. Remove entries as their real consumers land in later epics.
 """
 
-from matchodds import __metadata__, config
+from matchodds import __metadata__
+from matchodds.config import Settings, settings
 
 __metadata__.__repository__
 
-config.RANDOM_SEED
-config.REPO_ROOT
-config.DATA_DIR
-config.RAW_DIR
-config.PROCESSED_DIR
-config.MODELS_DIR
-config.ROLLING_WINDOW_N
-config.LEAGUES
+# config.Settings fields/properties are read by later epics (data, features, modelling, serving).
+Settings.model_config
+settings.random_seed
+settings.rolling_window_n
+settings.leagues
+settings.seasons_back
+settings.football_data_base_url
+settings.openfootball_base_url
+settings.repo_root
+settings.data_dir
+settings.models_dir
+settings.raw_dir
+settings.processed_dir
