@@ -54,6 +54,7 @@ Statuses: `Not started` · `In progress` · `Done`. Branch names are suggestions
 - `matchodds.data.sources`: pinned-URL download clients for football-data.co.uk + openfootball into `data/raw/`.
 - `matchodds.data.teams`: canonical team-name normalization map across sources, with a test asserting every raw name in scope resolves.
 - `matchodds.data.matches`: build + de-duplicate the master matches table → `data/processed/matches.parquet` (one row per match, normalized teams, league, date, full-time result, **full-time goals (FTHG/FTAG) — required by the Dixon-Coles goals model in Epic 04**, bookmaker closing odds where available).
+- `matchodds.data.schema`: a Pydantic v2 `Match` model validating each parsed row at the ingestion edge before loading into the DataFrame. This epic adds `pydantic` + `pydantic-settings` to `requirements.txt` and graduates `config.py` to a typed `Settings` (pydantic-settings).
 - `make data` runs the whole acquisition + cleaning chain.
 - `notebooks/01_data.ipynb`: a thin narrative that imports the above, shows coverage per league/season, and sanity-checks the cleaned table.
 - Data versioning: record the source snapshot date / file versions used.
