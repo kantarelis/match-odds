@@ -12,7 +12,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 |------|------------------------------------------------------|-------------|--------|
 | 1    | Package skeleton, metadata & config module           | Done        | —      |
 | 2    | Tooling config, dependency manifests & repo hygiene  | Done        | —      |
-| 3    | Makefile + test scaffolding (first green check+test) | Not started | —      |
+| 3    | Makefile + test scaffolding (first green check+test) | Done        | —      |
 | 4    | Complete the directory tree (placeholders)           | Not started | —      |
 | 5    | README skeleton (per-role "what this demonstrates")  | Not started | —      |
 | 6    | GitHub Actions CI                                    | Not started | —      |
@@ -63,22 +63,20 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 3 — Makefile + test scaffolding (first green check + test)
+## Task 3 — Makefile + test scaffolding (first green check + test) — ✅ Done
 
-**Scope (files created):**
-- `makefile` — real targets: `install-env`, `install`, `install-dev`, `install-test`, `format` (isort+black, incl. nbqa), `check` (isort, black, flake8, mypy, bandit, vulture, nbqa), `test` (pytest), `test-report` (pytest-cov HTML). Stub targets that print "not implemented until Epic NN" and exit 0: `data`, `features`, `train`, `repro`, `serve`, `up`, `down`, `demo`, `nb-run`. `nb-lint` runs nbqa only if `notebooks/*.ipynb` exist, else no-ops cleanly.
-- `tests/conftest.py` — ensures the installed `matchodds` package is importable under pytest.
-- `tests/unit/test_metadata.py` — trivial but real: `__version__` is a non-empty str; `RANDOM_SEED` is an int; `LEAGUES` is non-empty.
+**Outcome.** The epic's exit-criteria triple is green on Python 3.14.5.
+- `makefile` — `install-env` / `install` / `install-dev` / `install-test`, `format`, `check` (isort, black, flake8, mypy, bandit, vulture, nbqa), `test`, `test-report`, plus exit-0 stub targets for `data`/`features`/`train`/`repro`/`serve`/`up`/`down`/`demo`/`nb-run`. `nb-lint` no-ops cleanly when no notebooks exist. `check` runs mypy + bandit on `src` only; isort/black/flake8 also cover `tests/` and `.vulture_allowlist.py`. `install-dev` installs dev **and** test deps so the documented verify chain works.
+- `tests/conftest.py` — prepends `src/` to `sys.path` so tests import `matchodds` even without an editable install.
+- `tests/unit/test_metadata.py` — 3 smoke tests (version string, `RANDOM_SEED` int, `LEAGUES` non-empty tuple).
 - `tests/fixtures/.gitkeep`.
 
-**Acceptance criteria (the epic's exit-criteria triple, achieved here).**
-- `make install-dev` installs the editable package + dev deps.
-- `make check` passes (all seven tools).
-- `make test` passes (≥ 1 test, exit 0 — not pytest's "no tests collected" exit 5).
-- `make format` is idempotent.
-- Stub targets exit 0 with a clear message; `make nb-lint` no-ops with no notebooks.
+**Decisions / deviations (recorded).**
+- **Python 3.14 wheel gaps** (touches Task 2's requirements files): `pyarrow` deferred to **Epic 02** and `streamlit` to **Epic 06** — neither has a cp314 wheel yet (pyarrow fails to build from source; streamlit depends on it). Comments in the requirements files mark the deferrals.
+- **`isort` cap `<7`→`<9`** to admit the current 8.0.1 (install-dev had been downgrading it to 6.1.0); consistent with the earlier black/mypy cap fixes.
+- The editable build (dynamic version from `matchodds.__metadata__`) and the full dep stack (pandas 2.3.3, numpy 2.4.6, scikit-learn 1.8.0, xgboost 2.1.4, statsmodels 0.14.6, matplotlib 3.10.9, jupyter, papermill, nbqa, pytest) all install cleanly on 3.14.5.
 
-**Verification.** `make install-dev && make check && make test`.
+**Verification.** `make install-dev` → rc 0; `make check` → rc 0 (gate clean, nb-lint skipped); `make test` → **3 passed**; `make format` → idempotent (zero diff); `make data` stub → rc 0. ✅
 
 ---
 
