@@ -14,7 +14,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 2    | Tooling config, dependency manifests & repo hygiene  | ✅ Done        | —      |
 | 3    | Makefile + test scaffolding (first green check+test) | ✅ Done        | —      |
 | 4    | Complete the directory tree (placeholders)           | ✅ Done        | —      |
-| 5    | README skeleton (per-role "what this demonstrates")  | ⬜ Not started | —      |
+| 5    | README skeleton (per-role "what this demonstrates")  | ✅ Done        | —      |
 | 6    | GitHub Actions CI                                    | ⬜ Not started | —      |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
@@ -95,13 +95,15 @@ No deviations.
 
 ---
 
-## Task 5 — README skeleton (per-role "what this demonstrates")
+## Task 5 — README skeleton (per-role "what this demonstrates") — ✅ Done
 
-**Scope (files created):** `README.md` — title + one-line pitch; **"What this demonstrates per role"** section (ML Engineer primary, Data Engineer bonus); a quickstart stub referencing the `make` targets; a status line pointing at `MASTER_PLAN.md` for epic progress; license note; links to `MASTER_PLAN.md` and `CLAUDE.md`.
+**Outcome.**
+- `README.md` — pitch; prominent **"What this demonstrates (per role)"** section (ML Engineer primary, Data Engineer bonus); stack; public data sources; `make` quickstart; "under construction" status pointing at `MASTER_PLAN.md`; links to `CLAUDE.md` / `MASTER_PLAN.md`; MIT + "not betting advice" note.
+- `pyproject.toml` — wired `readme = "README.md"` (the follow-up deferred in Task 2, now that the file exists).
 
-**Acceptance criteria.** Renders as valid Markdown; per-role section present; no broken relative links. Full polish (eval tables, demo GIF) is Epic 08 — this is the skeleton only.
+**Verification.** README relative links (`MASTER_PLAN.md`, `CLAUDE.md`, `LICENSE`) all resolve; editable build still succeeds with the `readme` field; `make check` → PASS, `make test` → 3 passed. ✅
 
-**Verification.** `make check` + `make test` still green (README is not linted, but the commit must not regress them).
+No deviations (the `pyproject.toml` edit was the planned Task-2 follow-up).
 
 ---
 
