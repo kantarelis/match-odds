@@ -15,7 +15,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 3    | Makefile + test scaffolding (first green check+test) | ✅ Done        | —      |
 | 4    | Complete the directory tree (placeholders)           | ✅ Done        | —      |
 | 5    | README skeleton (per-role "what this demonstrates")  | ✅ Done        | —      |
-| 6    | GitHub Actions CI                                    | ⬜ Not started | —      |
+| 6    | GitHub Actions CI                                    | ✅ Done        | —      |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
 
@@ -107,15 +107,13 @@ No deviations (the `pyproject.toml` edit was the planned Task-2 follow-up).
 
 ---
 
-## Task 6 — GitHub Actions CI
+## Task 6 — GitHub Actions CI — ✅ Done
 
-**Scope (files created):** `.github/workflows/ci.yml` — triggers on push and pull_request; Python 3.14; steps: checkout → setup-python (pip cache) → `make install-dev` → `make check` → `make test` → `make nb-lint`.
+**Outcome.** `.github/workflows/ci.yml` — on `push` + `pull_request`, Python 3.14 with pip caching keyed on the `requirements*.txt`; steps: checkout → setup-python → `make install-dev` → `make check` → `make test` → `make nb-lint`. The workflow uses the same `.venv`-based `make` gate as local development. `nb-run` deliberately left out of CI until Epic 02 adds a runnable notebook.
 
-**Acceptance criteria.**
-- Valid workflow YAML mirroring the local `make` gate.
-- Green on the scaffold from a fresh clone (`nb-lint` no-ops with no notebooks; `nb-run` is **not** wired into CI until Epic 02 adds a runnable notebook).
+**Verification.** YAML parses (job `gate`, 6 steps); the local chain `make check` → PASS, `make test` → 3 passed, `make nb-lint` → skips cleanly, reproducing the CI gate steps. (The actual green run on GitHub confirms once the branch is pushed.) ✅
 
-**Verification.** `make install-dev && make check && make test && make nb-lint` locally reproduces the CI steps.
+No deviations.
 
 ---
 
