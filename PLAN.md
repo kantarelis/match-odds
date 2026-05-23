@@ -8,14 +8,16 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ## Progress
 
-| Task | Description                                          | Status      | Commit |
-|------|------------------------------------------------------|-------------|--------|
-| 1    | Package skeleton, metadata & config module           | Done        | —      |
-| 2    | Tooling config, dependency manifests & repo hygiene  | Done        | —      |
-| 3    | Makefile + test scaffolding (first green check+test) | Done        | —      |
-| 4    | Complete the directory tree (placeholders)           | Not started | —      |
-| 5    | README skeleton (per-role "what this demonstrates")  | Not started | —      |
-| 6    | GitHub Actions CI                                    | Not started | —      |
+| Task | Description                                          | Status         | Commit |
+|------|------------------------------------------------------|----------------|--------|
+| 1    | Package skeleton, metadata & config module           | ✅ Done        | —      |
+| 2    | Tooling config, dependency manifests & repo hygiene  | ✅ Done        | —      |
+| 3    | Makefile + test scaffolding (first green check+test) | ✅ Done        | —      |
+| 4    | Complete the directory tree (placeholders)           | ✅ Done        | —      |
+| 5    | README skeleton (per-role "what this demonstrates")  | ⬜ Not started | —      |
+| 6    | GitHub Actions CI                                    | ⬜ Not started | —      |
+
+**Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
 
 **Green-state rule.** Tasks 1–2 are bootstrap (no Makefile yet — verified by running tools/imports directly). **From Task 3 onward, every commit must keep `make check` + `make test` green.**
 
@@ -80,17 +82,16 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 4 — Complete the directory tree (placeholders)
+## Task 4 — Complete the directory tree (placeholders) — ✅ Done
 
-**Scope (files created):** `.gitkeep` (or minimal) markers so the full [`CLAUDE.md`](CLAUDE.md) target layout exists and is tracked:
-`notebooks/.gitkeep`, `serving/.gitkeep`, `demo/.gitkeep`, `models/.gitkeep`, `docs/.gitkeep`, `docs/history/.gitkeep`, `data/raw/.gitkeep`, `data/processed/.gitkeep`.
+**Outcome.** Added 8 `.gitkeep` markers so the full CLAUDE.md target layout is tracked from the start: `notebooks/`, `serving/`, `demo/`, `models/`, `docs/`, `docs/history/`, `data/raw/`, `data/processed/`.
 
-**Acceptance criteria.**
-- Directory tree matches the CLAUDE.md target (dirs present; code/notebooks arrive with their epics).
-- `data/` contents stay ignored while the two `data/` subdirs remain tracked via their `.gitkeep` exceptions.
-- `make check` + `make test` still green.
+**Verification.**
+- All 8 placeholders are seen by git (untracked, will commit); the target tree matches CLAUDE.md.
+- Gitignore exceptions confirmed via `git check-ignore`: `.gitkeep` and `models/v1.*` are **tracked**, while `data/*.csv`, `data/*.parquet`, and stray `models/*.joblib` are **ignored**.
+- `make check` → PASS, `make test` → 3 passed. ✅
 
-**Verification.** `git status` shows no stray ignored files tracked; `make check && make test`.
+No deviations.
 
 ---
 
