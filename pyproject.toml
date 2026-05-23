@@ -5,12 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "matchodds"
 description = "Calibrated, probabilistic football match-outcome predictor."
+readme = "README.md"
 requires-python = ">=3.14"
 license = { text = "MIT" }
 authors = [{ name = "Spyro Kantareli" }]
 dynamic = ["version"]
-# `readme` is intentionally omitted until README.md exists (Task 5) so `pip install -e .`
-# (Task 3) does not fail on a missing file.
 
 [tool.setuptools]
 package-dir = { "" = "src" }
