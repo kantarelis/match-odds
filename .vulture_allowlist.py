@@ -7,7 +7,7 @@ line-level suppression. Remove entries as their real consumers land in later epi
 
 from matchodds import __metadata__
 from matchodds.config import Settings, settings
-from matchodds.data import sources
+from matchodds.data import sources, teams
 from matchodds.data.schema import Match
 
 __metadata__.__repository__
@@ -43,3 +43,6 @@ Match._check_consistency
 # data.sources — entrypoints called by `make data` / the matches builder (Task 5).
 sources.download_all
 sources.load_raw
+
+# data.teams — normalize() consumed by the matches builder (Task 5).
+teams.normalize
