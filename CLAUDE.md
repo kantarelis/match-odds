@@ -184,7 +184,7 @@ This is the **default workflow for every epic** in this repo. The workflow exist
 - **Line length**: 120 characters (configured in `pyproject.toml` and `setup.cfg`).
 - **Formatter**: black with isort (black-compatible profile); `nbqa` applies both to notebooks.
 - **Type hints**: required on all `src/` and `serving/` code, checked with mypy.
-- **Python version**: 3.13.
+- **Python version**: 3.14.
 
 ### ML / Modeling Discipline (repo-specific, non-negotiable)
 
@@ -229,7 +229,7 @@ Team names differ across sources — `matchodds.data.teams` holds the canonical 
 
 ## Tech Stack
 
-- **Language**: Python 3.13
+- **Language**: Python 3.14
 - **Modeling**: pandas, NumPy, scikit-learn, XGBoost (LightGBM optional), statsmodels / sklearn calibration utilities
 - **Notebooks**: Jupyter, executed headless in CI via papermill, linted via nbqa
 - **Serving**: FastAPI + Uvicorn, artifact loaded with joblib

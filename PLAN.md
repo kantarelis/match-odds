@@ -11,7 +11,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | Task | Description                                          | Status      | Commit |
 |------|------------------------------------------------------|-------------|--------|
 | 1    | Package skeleton, metadata & config module           | Done        | —      |
-| 2    | Tooling config, dependency manifests & repo hygiene  | Not started | —      |
+| 2    | Tooling config, dependency manifests & repo hygiene  | Done        | —      |
 | 3    | Makefile + test scaffolding (first green check+test) | Not started | —      |
 | 4    | Complete the directory tree (placeholders)           | Not started | —      |
 | 5    | README skeleton (per-role "what this demonstrates")  | Not started | —      |
@@ -39,25 +39,27 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 2 — Tooling config, dependency manifests & repo hygiene
+## Task 2 — Tooling config, dependency manifests & repo hygiene — ✅ Done
 
-**Scope (files created):**
-- `pyproject.toml` — `[build-system]` (setuptools, src layout: `package-dir = {"" = "src"}`, `packages = ["matchodds"]` + subpackages); `[tool.black]`, `[tool.isort]` (black profile), `[tool.mypy]` (strict, `ignore_missing_imports` for `xgboost`/`statsmodels`/`streamlit`/`lightgbm`), `[tool.bandit]`, `[tool.vulture]` — all at **120 cols**.
-- `setup.cfg` — `[flake8]` (max-line-length 120, black-compatible ignores).
-- `pytest.ini` — `testpaths = tests`, strict markers.
-- `requirements.txt` — runtime core: `pandas`, `numpy`, `scikit-learn`, `xgboost`, `joblib`, `pyarrow`.
-- `requirements-dev.txt` — `-r requirements.txt` + `jupyter`, `papermill`, `nbqa`, `black`, `isort`, `flake8`, `mypy`, `bandit`, `vulture`, `pandas-stubs`, `matplotlib`, `statsmodels`, `streamlit` (LightGBM optional, commented).
-- `requirements-test.txt` — `-r requirements.txt` + `pytest`, `pytest-cov`, `httpx`.
-- `.gitignore` — `data/` contents (with `!data/raw/.gitkeep`, `!data/processed/.gitkeep` exceptions), `models/*` except `models/v1.*`, `__pycache__`, `.ipynb_checkpoints`, `.env`, `.pytest_cache`, `.mypy_cache`, coverage artifacts, `dist/`/`build/`/`*.egg-info`.
-- `.env.template` — reference env (placeholder; no secrets needed locally yet).
-- `.vulture_allowlist.py` — checked-in allowlist for the not-yet-consumed `config.py` constants (project-wide config, **not** a line-level silence).
+**Outcome.** Created 9 declarative/config files:
+- `pyproject.toml` — setuptools src-layout build (`package-dir = {"" = "src"}`, `packages.find` over `src`), **dynamic version** read from `matchodds.__metadata__.__version__`; 120-col `black` / `isort` (black profile) / `mypy` (strict) / `bandit` / `vulture`; a forward-looking `ignore_missing_imports` override for `xgboost`/`statsmodels`/`streamlit`/`lightgbm`.
+- `setup.cfg` — `[flake8]` at 120 cols, ignoring the black-incompatible `E203`/`W503`.
+- `pytest.ini` — `testpaths = tests`, `--strict-markers --strict-config`.
+- `requirements.txt` / `requirements-dev.txt` / `requirements-test.txt` — pinned core / dev (gate linters + notebooks + modelling/viz) / test deps.
+- `.gitignore` — data + model-artifact rules, `.venv/`, tooling caches, notebook checkpoints.
+- `.env.template` — placeholder (no local secrets yet).
+- `.vulture_allowlist.py` — whitelists the not-yet-consumed `config.py` constants + `__repository__`.
 
-**Acceptance criteria.** Run directly against the Task-1 package and pass clean:
-`black --check src`, `isort --check-only src`, `flake8 src`, `mypy src`, `bandit -r src`, `vulture src .vulture_allowlist.py`.
+**Decisions / deviations (recorded).**
+- **Python standardised on 3.14** (dev env is 3.14.5): `requires-python = ">=3.14"`, black `py314`, mypy `python_version = "3.14"`; CLAUDE.md and Task 6 updated to match.
+- **Version caps corrected** to admit what actually resolves: `black <27` (26.5.1), `mypy <3` (2.1.0).
+- **mypy extras** beyond the original scope: `mypy_path = "src"` + `explicit_package_bases = true` so `mypy src` resolves the top-level module as `matchodds` with no editable install. `warn_unused_configs` deliberately **not** enabled (it flags the forward-looking ML-lib overrides until Epic 04 imports them).
+- **`readme` omitted** from `pyproject.toml` `[project]` until `README.md` lands (Task 5), so `pip install -e .` (Task 3) doesn't fail on a missing file.
+- `packages.find` used instead of an explicit `packages = ["matchodds"]` list (equivalent, standard src-layout idiom).
 
-**Verification.** The six commands above (Makefile wraps them in Task 3).
+**Verification (no Makefile yet).** All six gate commands run clean against `src` in `.venv` (black 26.5.1, isort, flake8 7.3.0, mypy 2.1.0 strict, bandit 1.9.4, vulture 2.16): `black --check src`, `isort --check-only src`, `flake8 src`, `mypy src`, `bandit -r src`, `vulture src .vulture_allowlist.py` — **all PASS**. ✅
 
-**Notes.** No `joblib.load` exists yet, so `bandit` is clean now; the deserialization-skip config is deferred to Epic 05. Pin major versions in the requirements files; record exact pins when committing.
+> Note: no `joblib.load` exists yet, so `bandit` is clean; the deserialization-skip config is deferred to Epic 05.
 
 ---
 
@@ -106,7 +108,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ## Task 6 — GitHub Actions CI
 
-**Scope (files created):** `.github/workflows/ci.yml` — triggers on push and pull_request; Python 3.13; steps: checkout → setup-python (pip cache) → `make install-dev` → `make check` → `make test` → `make nb-lint`.
+**Scope (files created):** `.github/workflows/ci.yml` — triggers on push and pull_request; Python 3.14; steps: checkout → setup-python (pip cache) → `make install-dev` → `make check` → `make test` → `make nb-lint`.
 
 **Acceptance criteria.**
 - Valid workflow YAML mirroring the local `make` gate.

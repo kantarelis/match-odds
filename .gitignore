@@ -1,0 +1,38 @@
+# --- Data: never committed; reproduced via `make data` / `make features` ---
+data/*
+!data/raw/
+!data/processed/
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# --- Saved model artifacts: only the shipped v1.* is tracked ---
+models/*
+!models/.gitkeep
+!models/v1.joblib
+!models/v1.metadata.json
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- Environments ---
+.venv/
+venv/
+.env
+
+# --- Tooling caches / reports ---
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- Notebooks ---
+.ipynb_checkpoints/

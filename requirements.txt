@@ -1,0 +1,8 @@
+# Runtime core — used by both modelling and the inference service.
+# Exact resolved versions should be recorded after `make install-dev`.
+pandas>=2.2,<3
+numpy>=1.26,<3
+scikit-learn>=1.5,<2
+xgboost>=2.1,<3
+joblib>=1.4,<2
+pyarrow>=17,<21

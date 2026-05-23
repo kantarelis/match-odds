@@ -1,0 +1,21 @@
+-r requirements.txt
+
+# Notebooks
+jupyter>=1.1,<2
+papermill>=2.6,<3
+nbqa>=1.9,<2
+
+# Static-analysis gate (see CLAUDE.md → Static Analysis Gate)
+black>=24.10,<27
+isort>=5.13,<7
+flake8>=7.1,<8
+mypy>=1.13,<3
+bandit>=1.8,<2
+vulture>=2.13,<3
+pandas-stubs>=2.2,<3
+
+# Modelling / visualisation
+matplotlib>=3.9,<4
+statsmodels>=0.14,<1
+streamlit>=1.40,<2
+# lightgbm>=4.5,<5   # optional alternative booster; enable if compared in Epic 04
