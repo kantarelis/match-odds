@@ -7,6 +7,7 @@ line-level suppression. Remove entries as their real consumers land in later epi
 
 from matchodds import __metadata__
 from matchodds.config import Settings, settings
+from matchodds.data.schema import Match
 
 __metadata__.__repository__
 
@@ -23,3 +24,18 @@ settings.data_dir
 settings.models_dir
 settings.raw_dir
 settings.processed_dir
+
+# data.schema.Match — fields/validators consumed by the matches builder in Task 5.
+Match.model_config
+Match.home
+Match.away
+Match.league
+Match.date
+Match.ft_home_goals
+Match.ft_away_goals
+Match.result
+Match.odds_home
+Match.odds_draw
+Match.odds_away
+Match.source
+Match._check_consistency

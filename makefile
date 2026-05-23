@@ -3,6 +3,7 @@
 VENV ?= .venv
 PY := $(VENV)/bin/python
 PIP := $(PY) -m pip
+COVERAGE_BADGE := $(VENV)/bin/coverage-badge
 
 # Paths formatted / linted by the gate (mypy and bandit run on src only; see check below).
 CODE_PATHS := src tests .vulture_allowlist.py
@@ -19,7 +20,8 @@ help:
 	@echo "  format         Auto-format: isort + black (incl. notebooks via nbqa)"
 	@echo "  check          Gate: isort black flake8 mypy bandit vulture nbqa"
 	@echo "  test           Run the test suite"
-	@echo "  test-report    Tests with HTML coverage report"
+	@echo "  test-report    Tests + HTML coverage report, opened in the browser"
+	@echo "  coverage-badge Regenerate coverage.svg (README badge) from .coverage"
 	@echo "  nb-lint        Lint notebooks via nbqa (no-op if none)"
 	@echo "  data features train repro serve up down demo nb-run   (stubs until later epics)"
 
@@ -80,9 +82,18 @@ nb-lint:
 test:
 	$(PY) -m pytest
 
-.PHONY: test-report
+.PHONY: test-report coverage-badge
 test-report:
-	$(PY) -m pytest --cov=matchodds --cov-report=html --cov-report=term
+	@rm -f .coverage; \
+		$(PY) -m pytest --cov=matchodds --cov-report=term --cov-report=html; RC=$$?; \
+		if [ -f htmlcov/index.html ] && command -v xdg-open >/dev/null 2>&1; then \
+			echo "Opening htmlcov/index.html in the default browser..."; \
+			xdg-open htmlcov/index.html >/dev/null 2>&1 & \
+		fi; \
+		exit $$RC
+
+coverage-badge:
+	$(COVERAGE_BADGE) -f -o coverage.svg
 
 # ----- pipeline / serving stubs (filled by later epics) -----
 .PHONY: data features train repro serve up down demo nb-run

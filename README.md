@@ -4,6 +4,9 @@ Probabilistic football match-outcome predictor — calibrated home / draw / away
 probabilities for the Greek Super League and the top-5 European leagues, served behind a
 FastAPI endpoint with a small Streamlit demo.
 
+[![CI](https://github.com/kantarelis/match-odds/actions/workflows/ci.yml/badge.svg)](https://github.com/kantarelis/match-odds/actions/workflows/ci.yml)
+![Coverage](coverage.svg)
+
 > 🚧 **Under active construction.** Built epic-by-epic — see
 > [`MASTER_PLAN.md`](MASTER_PLAN.md) for the roadmap and current status.
 

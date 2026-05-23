@@ -11,7 +11,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | Task | Description                                                    | Status         | Commit |
 |------|----------------------------------------------------------------|----------------|--------|
 | 1    | Data deps, `config` → pydantic `Settings`, parquet engine      | ✅ Done        | —      |
-| 2    | `data.schema` — Pydantic `Match` model + validation            | ⬜ Not started | —      |
+| 2    | `data.schema` — Pydantic `Match` model + validation            | ✅ Done        | —      |
 | 3    | `data.sources` — download clients + version manifest           | ⬜ Not started | —      |
 | 4    | `data.teams` — canonical team-name normalization               | ⬜ Not started | —      |
 | 5    | `data.matches` — build master table + `make data`              | ⬜ Not started | —      |
@@ -50,15 +50,18 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 2 — `data.schema`: Pydantic `Match` model + validation
+## Task 2 — `data.schema`: Pydantic `Match` model + validation — ✅ Done
 
-**Scope.**
-- `src/matchodds/data/schema.py`: a Pydantic v2 `Match` model — `home` / `away` (canonical, str), `league`, `date` (date), `ft_home_goals` / `ft_away_goals` (int ≥ 0), `result` (`Literal["H","D","A"]`), optional closing odds, `source` provenance. Validators: goals non-negative; `result` consistent with the goals; date sane.
-- `tests/unit/test_schema.py`: valid row passes; negative goals rejected; result/goals mismatch rejected; odds optional.
+**Outcome.**
+- `src/matchodds/data/schema.py`: `Match` (`frozen=True`, `extra="forbid"`) — non-empty `home`/`away`/`league`, `date`, non-negative `ft_home_goals`/`ft_away_goals`, `result` ∈ {H,D,A}, optional decimal odds (`odds_home`/`draw`/`away`, each > 1), `source` ∈ {football-data, openfootball}. A single `model_validator(mode="after")` enforces: plausible date range (1990–2100), home ≠ away, and result consistent with the score.
+- `tests/unit/test_schema.py`: 9 tests — valid, valid+odds, negative goals, result/score mismatch, same team, odds ≤ 1, unknown source, extra field, out-of-range date.
 
-**Acceptance criteria.** Model validates/rejects exactly per the rules above; `make check` + `make test` green.
+**Decisions / deviations (recorded).**
+- **One `model_validator`, no `field_validator`** — vulture flagged the date `field_validator`'s unused `cls` (100%); folding the date check into the `self`-based validator removes it (no line-level suppression).
+- **`league` is a non-empty str, not checked against `settings.leagues`** — league-membership enforcement is deferred to the matches builder (Task 5), where `settings` is in scope and names are already canonical (`data.teams`, Task 4).
+- **Odds are generic optional fields**; mapping from source-specific columns (B365*, PSC*, …) happens in Tasks 3/5.
 
-**Verification.** `pytest -k schema -v`.
+**Verification.** `make check` → PASS; `make test` → **13 passed** (4 metadata + 9 schema). ✅
 
 ---
 
