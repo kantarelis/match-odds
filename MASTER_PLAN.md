@@ -11,18 +11,18 @@ See [`CLAUDE.md`](CLAUDE.md) → *Development Methodology* for the full Epic →
 
 ## Epic Status
 
-| #  | Epic                                         | Plan steps | Status      | Branch                | Commit range |
-|----|----------------------------------------------|------------|-------------|-----------------------|--------------|
-| 01 | Repo Scaffold, Tooling & CI Skeleton         | 2.1        | In progress | `epic-01-scaffold`    | —            |
-| 02 | Data Acquisition & Cleaning                  | 2.2        | Not started | `epic-02-data`        | —            |
-| 03 | Feature Pipeline (leakage-free)              | 2.3        | Not started | `epic-03-features`    | —            |
-| 04 | Modeling, Evaluation & Calibration           | 2.4, 2.5   | Not started | `epic-04-modeling`    | —            |
-| 05 | FastAPI Inference Service (Dockerised)       | 2.6        | Not started | `epic-05-serving`     | —            |
-| 06 | Streamlit Demo App                           | —          | Not started | `epic-06-demo`        | —            |
-| 07 | Betting-Edge Analysis (optional appendix)    | 2.7        | Not started | `epic-07-betting`     | —            |
-| 08 | Documentation, Model Card & Reproducibility  | 2.8, 2.9   | Not started | `epic-08-docs`        | —            |
+| #  | Epic                                         | Plan steps | Status         | Branch              | Commit range |
+|----|----------------------------------------------|------------|----------------|---------------------|--------------|
+| 01 | Repo Scaffold, Tooling & CI Skeleton         | 2.1        | ✅ Done        | `implement-scaffold-tooling-and-ci-skeleton` | `e84115d..f793d2f` |
+| 02 | Data Acquisition & Cleaning                  | 2.2        | ⬜ Not started | `epic-02-data`      | —            |
+| 03 | Feature Pipeline (leakage-free)              | 2.3        | ⬜ Not started | `epic-03-features`  | —            |
+| 04 | Modeling, Evaluation & Calibration           | 2.4, 2.5   | ⬜ Not started | `epic-04-modeling`  | —            |
+| 05 | FastAPI Inference Service (Dockerised)       | 2.6        | ⬜ Not started | `epic-05-serving`   | —            |
+| 06 | Streamlit Demo App                           | —          | ⬜ Not started | `epic-06-demo`      | —            |
+| 07 | Betting-Edge Analysis (optional appendix)    | 2.7        | ⬜ Not started | `epic-07-betting`   | —            |
+| 08 | Documentation, Model Card & Reproducibility  | 2.8, 2.9   | ⬜ Not started | `epic-08-docs`      | —            |
 
-Statuses: `Not started` · `In progress` · `Done`. Branch names are suggestions; the user creates branches.
+**Legend:** ✅ Done · 🔄 In progress · ⬜ Not started. Branch names are suggestions; the user creates branches.
 
 ---
 
