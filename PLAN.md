@@ -13,7 +13,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 1    | Data deps, `config` → pydantic `Settings`, parquet engine      | ✅ Done        | —      |
 | 2    | `data.schema` — Pydantic `Match` model + validation            | ✅ Done        | —      |
 | 3    | `data.sources` — download client + version manifest            | ✅ Done        | —      |
-| 4    | `data.teams` — canonical team-name normalization               | ⬜ Not started | —      |
+| 4    | `data.teams` — canonical team-name normalization               | ✅ Done        | —      |
 | 5    | `data.matches` — build master table + `make data`              | ⬜ Not started | —      |
 | 6    | `01_data.ipynb` + wire `make nb-run` into CI                   | ⬜ Not started | —      |
 
@@ -81,16 +81,21 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 4 — `data.teams`: canonical team-name normalization
+## Task 4 — `data.teams`: canonical team-name normalization — ✅ Done
 
-**Scope.**
-- `src/matchodds/data/teams.py`: a canonical team-name map for the football-data.co.uk spellings across the in-scope leagues + `normalize(raw, league) -> canonical`. Built from the **real raw spellings** observed via Task 3. Unknown names raise a clear error — never silently pass through.
-- `tests/fixtures/raw_team_names.txt`: every distinct raw home/away name seen in the downloaded files (generated during implementation), so the resolution test runs **offline**.
-- `tests/unit/test_teams.py`: assert every name in the fixture resolves; an unmapped name raises.
+**Outcome.**
+- `src/matchodds/data/teams.py`: `normalize(raw, league) -> canonical` + `canonical_names(league)`, backed by a generated registry; raises `UnknownTeamError` for unknown team **or** league (fail-loud — new/renamed teams must be added deliberately).
+- `src/matchodds/data/canonical_teams.json`: **186 canonical names** across the 6 leagues (incl. 25 Greek), generated from the real downloads.
+- `tests/manual/build_team_registry.py`: committed, reproducible generator (download → extract distinct names → write registry + fixture).
+- `tests/fixtures/raw_team_names.txt`: offline corpus for the resolution test.
+- `tests/unit/test_teams.py`: 5 tests (every league covered, every raw name resolves, unknown team raises, unknown league raises, whitespace stripped).
 
-**Acceptance criteria.** 100% of in-scope raw names resolve; unmapped names fail loudly; `make check` + `make test` green.
+**Decisions / deviations (recorded).**
+- **Aliases start empty** — football-data.co.uk spellings are internally consistent across seasons, so single-source normalization is *canonicalize + validate*, not cross-source reconciliation.
+- **Registry is generated data** loaded by `teams.py`; regenerate via the committed `tests/manual/build_team_registry.py`.
+- Building the registry warmed `data/raw/` (gitignored cache), so Task 5's `make data` starts warm.
 
-**Verification.** `pytest -k teams -v`.
+**Verification.** `canonical_teams.json` + `raw_team_names.txt` tracked (the `data/` ignore only anchors to root); `make check` → PASS; `make test` → **24 passed** (4 metadata + 9 schema + 6 sources + 5 teams). ✅
 
 ---
 
