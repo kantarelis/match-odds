@@ -58,6 +58,7 @@ notebooks/                   # Exploratory + narrative work (thin; logic lives i
 └── 03_betting_edge.ipynb    # Optional appendix: model vs. bookmaker, positive-EV (historical only)
 
 src/matchodds/               # The importable package — single source of truth for all logic
+├── __metadata__.py          # Project metadata: version, author, license (single source of truth)
 ├── config.py                # Leagues in scope, data paths, RANDOM_SEED, rolling-window N
 ├── data/                    # Acquisition + cleaning (the small ETL — Data Engineer signal)
 │   ├── sources.py           # football-data.co.uk + openfootball download clients (pinned URLs)
@@ -118,7 +119,6 @@ pyproject.toml / setup.cfg   # Tool configs (black, isort, flake8, mypy, bandit,
 pytest.ini
 requirements*.txt            # Split: core / dev / test (and serving runtime)
 .env.template                # Reference env file
-__metadata__.py              # Project metadata (version, authors, license)
 README.md                    # Does 90% of the recruiter work (per-role "what this demonstrates")
 ```
 
@@ -129,6 +129,7 @@ README.md                    # Does 90% of the recruiter work (per-role "what th
 - **Manager–Views pattern (reused from quake-feed).** Each serving API module has a `Main` class (Manager) that owns the `APIRouter` and instantiates a `Views` class holding endpoint logic; its `run()` wires routes and returns the router. `serving/app/main.py` constructs and `.run()`s every manager and mounts the routers. Keeping this identical to quake-feed is intentional — the serving layer is meant to be muscle memory.
 - **Frozen-artifact serving.** The service never trains. It loads `models/v1.joblib` once at startup and only does feature reconstruction + `predict_proba`. Retraining is a notebook/`make train` activity that produces a new versioned artifact.
 - **Deterministic training.** A single `RANDOM_SEED` in `config.py` flows into every split, model, and calibrator. `make repro` from a pinned data version must reproduce the committed `models/v1.joblib` metrics.
+- **Data & validation layers — one tool per job.** **pandas** owns tabular work (CSV ingestion, multi-source merges, `groupby`, rolling windows, time-ordered features); **NumPy** is the numeric core beneath it and the model-input boundary (scikit-learn / XGBoost / statsmodels consume arrays); **Pydantic v2** owns validation and typed boundaries — API request/response, a `pydantic-settings` `Settings`/config object, and a validated `Match` record at the ingestion edge (validate each parsed row, then load into the DataFrame). Pydantic is never used as a bulk tabular store; the data size (tens of thousands of matches) makes pandas' overhead irrelevant.
 
 ## Code Conventions
 
@@ -184,7 +185,7 @@ This is the **default workflow for every epic** in this repo. The workflow exist
 - **Line length**: 120 characters (configured in `pyproject.toml` and `setup.cfg`).
 - **Formatter**: black with isort (black-compatible profile); `nbqa` applies both to notebooks.
 - **Type hints**: required on all `src/` and `serving/` code, checked with mypy.
-- **Python version**: 3.13.
+- **Python version**: 3.14.
 
 ### ML / Modeling Discipline (repo-specific, non-negotiable)
 
@@ -229,8 +230,9 @@ Team names differ across sources — `matchodds.data.teams` holds the canonical 
 
 ## Tech Stack
 
-- **Language**: Python 3.13
+- **Language**: Python 3.14
 - **Modeling**: pandas, NumPy, scikit-learn, XGBoost (LightGBM optional), statsmodels / sklearn calibration utilities
+- **Validation & config**: Pydantic v2 + pydantic-settings (API schemas, typed `Settings`, record validation at the ingestion edge)
 - **Notebooks**: Jupyter, executed headless in CI via papermill, linted via nbqa
 - **Serving**: FastAPI + Uvicorn, artifact loaded with joblib
 - **Demo**: Streamlit

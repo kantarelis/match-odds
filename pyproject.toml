@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "matchodds"
+description = "Calibrated, probabilistic football match-outcome predictor."
+readme = "README.md"
+requires-python = ">=3.14"
+license = { text = "MIT" }
+authors = [{ name = "Spyro Kantareli" }]
+dynamic = ["version"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+version = { attr = "matchodds.__metadata__.__version__" }
+
+[tool.black]
+line-length = 120
+target-version = ["py314"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+src_paths = ["src", "tests", "serving", "demo"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+files = ["src"]
+mypy_path = "src"
+explicit_package_bases = true
+show_error_codes = true
+
+# Stub-less ML libs imported from Epic 04 onward; declared now so they don't trip strict mypy later.
+[[tool.mypy.overrides]]
+module = ["xgboost.*", "statsmodels.*", "streamlit.*", "lightgbm.*"]
+ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "build", "dist"]
+
+[tool.vulture]
+paths = ["src", ".vulture_allowlist.py"]
+min_confidence = 60
