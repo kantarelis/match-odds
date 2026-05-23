@@ -98,7 +98,7 @@ coverage-badge:
 # ----- pipeline / serving stubs (filled by later epics) -----
 .PHONY: data features train repro serve up down demo nb-run
 data:
-	@echo "make data — not implemented until Epic 02 (data acquisition)."
+	$(PY) -m matchodds.data.matches
 features:
 	@echo "make features — not implemented until Epic 03 (feature pipeline)."
 train:

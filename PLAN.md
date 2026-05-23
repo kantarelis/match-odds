@@ -14,7 +14,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 2    | `data.schema` — Pydantic `Match` model + validation            | ✅ Done        | —      |
 | 3    | `data.sources` — download client + version manifest            | ✅ Done        | —      |
 | 4    | `data.teams` — canonical team-name normalization               | ✅ Done        | —      |
-| 5    | `data.matches` — build master table + `make data`              | ⬜ Not started | —      |
+| 5    | `data.matches` — build master table + `make data`              | ✅ Done        | —      |
 | 6    | `01_data.ipynb` + wire `make nb-run` into CI                   | ⬜ Not started | —      |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
@@ -99,16 +99,21 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 5 — `data.matches`: build master table + `make data`
+## Task 5 — `data.matches`: build master table + `make data` — ✅ Done
 
-**Scope.**
-- `src/matchodds/data/matches.py`: orchestrate raw → per-row `Match` validation (Task 2) → team normalization (Task 4) → assemble DataFrame → **dedupe** (one row per match) → sort by date → write `settings.processed_dir/matches.{parquet|csv.gz}` + a `matches.meta.json` sidecar (row counts, leagues/seasons covered, source-manifest reference, build timestamp).
-- Wire `make data` to run `sources` (download) → `matches` (build).
-- `tests/unit/test_matches.py`: on the committed sample raw set, the build yields the expected normalized/validated/deduped rows; FTHG/FTAG present; dedup works.
+**Outcome.**
+- `src/matchodds/data/matches.py`: read each raw CSV → per-row `Match` validation (Task 2) + team normalization (Task 4) → dedupe on `(league, date, home, away)` → sort by date → write `processed_dir/matches.parquet` + `matches.meta.json` (rows, per-league counts, date range, source-manifest ref, build timestamp). `main()` wires download → build.
+- `make data` → `python -m matchodds.data.matches`.
+- `tests/unit/test_matches.py`: 3 offline builder tests (normalize/validate, dedupe, parquet+meta) against the committed sample CSV.
 
-**Acceptance criteria.** `make data` produces the processed table **from scratch** (real run verified locally); the offline fixture build test passes; `make check` + `make test` green.
+**Decisions / deviations (recorded).**
+- **Parquet only** (Decision 2 resolved to pyarrow ≥24) — no `csv.gz` fallback.
+- **`format="mixed"`** for dates (football-data mixes `DD/MM/YYYY` and `DD/MM/YY`) — explicit + silences the inference warning.
+- **Postponements/abandonments skipped** (no goals/date/result); **unknown teams fail loud** (`UnknownTeamError` propagates).
+- **Closing-odds priority** PSC → B365C → AvgC → PS → B365 → Avg.
+- `matches.parquet` / `.meta.json` are gitignored build artifacts (reproduced via `make data`), not committed.
 
-**Verification.** `make data` end-to-end locally (network); `pytest -k matches -v`.
+**Verification.** Real `make data` → **20,294 matches** across 6 leagues (2016→2026, 100% odds coverage), no warnings, ~3s; `make check` → PASS; `make test` → **27 passed** (4 metadata + 9 schema + 6 sources + 5 teams + 3 matches). ✅
 
 ---
 
