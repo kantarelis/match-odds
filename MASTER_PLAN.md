@@ -13,7 +13,7 @@ See [`CLAUDE.md`](CLAUDE.md) → *Development Methodology* for the full Epic →
 
 | #  | Epic                                         | Plan steps | Status      | Branch                | Commit range |
 |----|----------------------------------------------|------------|-------------|-----------------------|--------------|
-| 01 | Repo Scaffold, Tooling & CI Skeleton         | 2.1        | Not started | `epic-01-scaffold`    | —            |
+| 01 | Repo Scaffold, Tooling & CI Skeleton         | 2.1        | In progress | `epic-01-scaffold`    | —            |
 | 02 | Data Acquisition & Cleaning                  | 2.2        | Not started | `epic-02-data`        | —            |
 | 03 | Feature Pipeline (leakage-free)              | 2.3        | Not started | `epic-03-features`    | —            |
 | 04 | Modeling, Evaluation & Calibration           | 2.4, 2.5   | Not started | `epic-04-modeling`    | —            |
