@@ -10,7 +10,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 | Task | Description                                          | Status      | Commit |
 |------|------------------------------------------------------|-------------|--------|
-| 1    | Package skeleton, metadata & config module           | Not started | —      |
+| 1    | Package skeleton, metadata & config module           | Done        | —      |
 | 2    | Tooling config, dependency manifests & repo hygiene  | Not started | —      |
 | 3    | Makefile + test scaffolding (first green check+test) | Not started | —      |
 | 4    | Complete the directory tree (placeholders)           | Not started | —      |
@@ -23,21 +23,19 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 1 — Package skeleton, metadata & config module
+## Task 1 — Package skeleton, metadata & config module — ✅ Done
 
-**Scope (files created):**
-- `src/matchodds/__init__.py` — re-exports `__version__` from `__metadata__`.
-- `src/matchodds/config.py` — typed module-level constants: `RANDOM_SEED: int`, `DATA_DIR` / `RAW_DIR` / `PROCESSED_DIR` / `MODELS_DIR` (`pathlib.Path`), `ROLLING_WINDOW_N: int`, `LEAGUES: tuple[str, ...]` (default: Greek Superleague + EPL, La Liga, Serie A, Bundesliga, Ligue 1).
-- `src/matchodds/data/__init__.py`, `src/matchodds/features/__init__.py`, `src/matchodds/modeling/__init__.py` — empty package markers (filled by Epics 02–04).
-- `__metadata__.py` — `__version__`, `__author__` (Spyro Kantareli), `__license__` ("MIT"), repo URL.
+**Outcome.** Created the importable `src/matchodds` package (6 files):
+- `src/matchodds/__metadata__.py` — `__version__` (`0.1.0`), `__author__` (Spyro Kantareli), `__license__` (`MIT`), `__repository__`.
+- `src/matchodds/__init__.py` — re-exports `__version__` / `__author__` / `__license__` via `__all__` (explicit re-export, mypy-strict clean).
+- `src/matchodds/config.py` — typed constants: `RANDOM_SEED: int`, repo-root-derived `REPO_ROOT` / `DATA_DIR` / `RAW_DIR` / `PROCESSED_DIR` / `MODELS_DIR` (`pathlib.Path`), `ROLLING_WINDOW_N: int`, `LEAGUES: tuple[str, ...]` (6: Greek Super League + EPL, La Liga, Serie A, Bundesliga, Ligue 1).
+- `src/matchodds/data/__init__.py`, `features/__init__.py`, `modeling/__init__.py` — package markers (filled by Epics 02–04).
 
-**Details.** Pure, type-hinted Python; no third-party imports. `config.py` paths are derived from the repo root via `pathlib`, not hard-coded absolutes. `LEAGUES` is a sensible default that Epic 02 may refine.
+**Deviation (structural, recorded).** `__metadata__.py` was placed **inside the package** (`src/matchodds/__metadata__.py`) rather than at the repo root as originally drawn. Reason: under the src layout, a root-level module isn't importable from the installed package, so `matchodds.__version__` (this task's acceptance criterion) couldn't resolve it. The placement keeps a single source of truth; CLAUDE.md's directory tree was corrected to match.
 
-**Acceptance criteria.**
-- `PYTHONPATH=src python -c "import matchodds, matchodds.config; print(matchodds.__version__)"` succeeds.
-- Every config constant is present with the documented type.
+**Verification (no Makefile yet).** `PYTHONPATH=src python3 -c "import matchodds, matchodds.config; ..."` — imports succeed, `__version__ == "0.1.0"`, every config constant present with its documented type, `REPO_ROOT` resolves to `…/match-odds`. ✅
 
-**Verification (no Makefile yet).** The import line above.
+> Acceptance criterion (kept for the record): `PYTHONPATH=src python -c "import matchodds, matchodds.config; print(matchodds.__version__)"` succeeds, and every config constant is present with the documented type.
 
 ---
 

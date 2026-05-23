@@ -58,6 +58,7 @@ notebooks/                   # Exploratory + narrative work (thin; logic lives i
 └── 03_betting_edge.ipynb    # Optional appendix: model vs. bookmaker, positive-EV (historical only)
 
 src/matchodds/               # The importable package — single source of truth for all logic
+├── __metadata__.py          # Project metadata: version, author, license (single source of truth)
 ├── config.py                # Leagues in scope, data paths, RANDOM_SEED, rolling-window N
 ├── data/                    # Acquisition + cleaning (the small ETL — Data Engineer signal)
 │   ├── sources.py           # football-data.co.uk + openfootball download clients (pinned URLs)
@@ -118,7 +119,6 @@ pyproject.toml / setup.cfg   # Tool configs (black, isort, flake8, mypy, bandit,
 pytest.ini
 requirements*.txt            # Split: core / dev / test (and serving runtime)
 .env.template                # Reference env file
-__metadata__.py              # Project metadata (version, authors, license)
 README.md                    # Does 90% of the recruiter work (per-role "what this demonstrates")
 ```
 
