@@ -1,0 +1,182 @@
+# PLAN — Epic 03: Feature Pipeline (leakage-free)
+
+Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute git rule live in [`CLAUDE.md`](CLAUDE.md) → *Development Methodology*. **One task = one commit.** Claude implements exactly one task on request, runs `make check` + `make test`, then stops for the user to review/commit/push.
+
+**Branch:** `epic-03-features`
+
+**Goal.** Implement the `features(date_cutoff)` leakage contract — the heart of the ML-Engineering signal. Walk the master matches table in chronological order and, for every match, emit a feature row computed **strictly from data before kickoff**. The same accumulator code builds the training table (`make features`) and the single feature row served at inference time (Epic 05) — one code path, no train/serve skew.
+
+## Progress
+
+| Task | Description                                                          | Status         | Commit |
+|------|----------------------------------------------------------------------|----------------|--------|
+| 1    | Pipeline scaffold — accumulator contract, chronological driver, leakage harness, `season_of` | ⬜ Not started | —      |
+| 2    | `elo.py` — pre-match Elo snapshot                                    | ⬜ Not started | —      |
+| 3    | `form.py` — rolling last-N form                                     | ⬜ Not started | —      |
+| 4    | `head_to_head.py` — pairwise H2H history                            | ⬜ Not started | —      |
+| 5    | `strength.py` — home/away venue strength (season-scoped)            | ⬜ Not started | —      |
+| 6    | `season.py` — season-progress features                              | ⬜ Not started | —      |
+| 7    | Materialize: `make features`, `features.parquet` + meta, end-to-end leakage + train/serve-equivalence tests | ⬜ Not started | —      |
+| 8    | `docs/feature-pipeline.md` — every feature + its pre-match snapshot  | ⬜ Not started | —      |
+
+**Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
+
+**Green-state rule.** The toolchain exists from Epic 01, so **every commit must keep `make check` + `make test` green** (no bootstrap phase this epic). No notebooks are touched in Epic 03, so `make nb-lint` / `make nb-run` are not part of any task's gate.
+
+**Consolidation note (flag at review).** Tasks 4 (H2H) and 6 (season-progress) are the two smallest accumulators; if you'd prefer fewer commits they can be merged into one task. The split below keeps one named feature family per commit (clean per-feature revert/blame), matching the Epic 02 style.
+
+## Decisions baked in (flag at review to change)
+
+1. **Single-pass chronological accumulator design — the leakage guarantee is structural.** Each feature family is a stateful *accumulator* exposing two methods: `pre_match(home, away, league, date) -> dict[str, float]` (reads state built only from earlier matches) and `update(row) -> None` (folds in this match's result). The pipeline sorts matches chronologically and, for each match, **snapshots before it updates** — so a match's features can never see its own or any later result. Leakage-free *by construction*, not by a downstream check.
+2. **Two entrypoints in `pipeline.py`, one shared engine.** `build_feature_table(matches)` is the full training sweep (one pre-match row per historical match); `features(matches, fixtures, *, date_cutoff)` is the serving / point-in-time call (replay history `date < date_cutoff`, then snapshot the given fixtures — no result needed). Both drive the *same* accumulators, so there is no train/serve skew. A test pins their **equivalence**: a row from the training sweep equals `features(date_cutoff=that match's date)` for that fixture.
+3. **Cold-start policy.** A team/pair with no prior history gets neutral defaults: Elo = `elo_base`; rolling / venue / H2H features = `NaN` paired with an explicit count column (`*_n`, `h2h_matches`) so the model can learn the low-data regime. Imputation for estimators that can't take NaN (logreg) is **Epic 04's** job, not the pipeline's.
+4. **Odds pass through untouched.** `odds_home/draw/away` are legitimate pre-kickoff info (closing odds set before kickoff) and are carried into the feature table **as passthrough columns** for Epic 04's bookmaker baseline and Epic 07's betting-edge analysis. They are **not** turned into engineered model features here — keeping the model's signal independent of the bookmaker is a modeling decision deferred to Epic 04.
+5. **Season = football-data July cutover (Aug–May).** A pure calendar helper `season_of(date) -> str` lives in `features/base.py` (Task 1) and is shared by strength (venue records reset per season) and season-progress. It mirrors the cutover already used in `sources.season_code` — extracted, not duplicated.
+6. **Output artifacts.** `make features` writes `processed_dir/features.parquet` + a `features.meta.json` sidecar (feature-column list, config params used — Elo K/base/home-adv, rolling N — row + per-league counts, source `matches.meta.json` reference, build timestamp). Both are **gitignored build artifacts** reproduced via `make features`, exactly like `matches.parquet`.
+7. **Offline, deterministic tests.** A committed, human-readable `tests/fixtures/synthetic_matches.csv` (4 teams, one league, two seasons, full home/away double round-robin → ~24 matches with rematches and a season boundary) drives every value-pinning and leakage test. No network; pinned values are hand-computable.
+8. **Config additions stay minimal.** Elo introduces `elo_base` (1500.0), `elo_k` (20.0), `elo_home_advantage` (65.0) on `settings` (with `MATCHODDS_` overrides); form reuses the existing `rolling_window_n`. Features are fully **deterministic** — `random_seed` is not consumed here.
+
+**Out of scope (their own epics):** any modeling, training, or calibration and the time-ordered CV splitter (Epic 04); serving wiring (Epic 05); notebooks (`02_modeling.ipynb` is Epic 04; `01_data.ipynb` is unchanged); `make repro` (Epic 04, chains data → features → train). No new data sources or raw columns beyond the master matches table.
+
+---
+
+## Task 1 — Pipeline scaffold: accumulator contract, chronological driver, leakage harness
+
+**Scope (files to touch).**
+- `src/matchodds/features/base.py` (new): the `FeatureAccumulator` `Protocol` — `feature_names: tuple[str, ...]`, `pre_match(home, away, league, date) -> dict[str, float]`, `update(row) -> None`. Plus the pure calendar helper `season_of(date) -> str` (July cutover) shared by later tasks.
+- `src/matchodds/features/pipeline.py` (new): the chronological engine.
+  - `build_feature_table(matches, accumulators=()) -> pd.DataFrame`: sort by `(date, league, home)`, iterate, **snapshot-before-update**, assemble each row from the accumulators' `pre_match` dicts + identifiers (`league, date, home, away`) + label (`result`) + odds passthrough.
+  - `features(matches, fixtures, *, date_cutoff, accumulators=()) -> pd.DataFrame`: replay `matches[date < date_cutoff]` into fresh accumulators, then snapshot each fixture row (no result/label).
+  - A module-level `default_accumulators()` returning the wired feature set — **empty tuple for now**; each later task appends its accumulator here.
+- `tests/fixtures/synthetic_matches.csv` (new): the deterministic fixture described in Decision 7.
+- `tests/unit/test_pipeline.py` (new): driver contract tests.
+
+**Acceptance criteria.**
+- `build_feature_table(synthetic)` returns exactly one row per match, in chronological order, carrying `league/date/home/away/result/odds_*` (no feature columns yet, since the default set is empty).
+- **Leakage meta-test:** an in-test probe accumulator records, at each `pre_match` call, how many `update` calls it has seen; the test asserts that for the i-th match it is exactly `i` (snapshot strictly precedes update; matches are fed in chronological order; no future match is ever visible).
+- **Append-future invariance:** appending a match dated after match *M* and rebuilding leaves *M*'s row byte-identical.
+- `season_of` returns the expected season label across a July boundary (e.g. `2023-07-31` → prior season, `2023-08-01` → new season).
+
+**Gate.** `make check` → PASS; `make test` → existing 27 + new pipeline tests pass.
+
+---
+
+## Task 2 — `elo.py`: pre-match Elo snapshot
+
+**Scope (files to touch).**
+- `src/matchodds/config.py`: add `elo_base: float = 1500.0`, `elo_k: float = 20.0`, `elo_home_advantage: float = 65.0`.
+- `src/matchodds/features/elo.py` (new): `EloAccumulator` — per-`(league, team)` rating; `pre_match` emits `elo_home`, `elo_away`, `elo_diff` (= `elo_home + elo_home_advantage − elo_away`); `update` applies standard Elo with the home-advantage-adjusted expected score and a result-based actual score (W/D/L → 1/0.5/0). Cold start = `elo_base`.
+- `src/matchodds/features/pipeline.py`: add `EloAccumulator` to `default_accumulators()`.
+- `tests/unit/test_elo.py` (new).
+
+**Acceptance criteria.**
+- Pinned Elo values after a known synthetic sequence match hand computation; `elo_diff` includes the home-advantage term.
+- **Conservation:** the two teams' rating changes from a match sum to ~0 (zero-sum update).
+- **Cold start:** a team's first match snapshots `elo_base` for it.
+- **League isolation:** ratings keyed by `(league, team)` — a small two-league case asserts no cross-league contamination.
+- **Leakage:** appending a future match does not change any earlier `elo_*` row.
+
+**Gate.** `make check` → PASS (new `settings` fields consumed by `elo.py`, so vulture stays clean); `make test` → all green.
+
+---
+
+## Task 3 — `form.py`: rolling last-N form
+
+**Scope (files to touch).**
+- `src/matchodds/features/form.py` (new): `FormAccumulator` over `settings.rolling_window_n`. Per team, a deque of the last N `(points, goals_for, goals_against)`. `pre_match` emits for home and away: `form_{side}_ppg`, `form_{side}_gf`, `form_{side}_ga` (means over the last ≤N matches) and `form_{side}_n` (matches available); cold start → `NaN` (with `_n = 0`).
+- `src/matchodds/features/pipeline.py`: add `FormAccumulator` to `default_accumulators()`.
+- `tests/unit/test_form.py` (new).
+
+**Acceptance criteria.**
+- Pinned rolling means match hand computation on the synthetic fixture.
+- **Window bound:** with >N prior matches, only the last N contribute (older results drop out).
+- **Cold start:** `form_*_n == 0` and `form_*_ppg/gf/ga` are `NaN` on a team's first match.
+- **Leakage:** append-future invariance holds for all `form_*` columns.
+
+**Gate.** `make check` → PASS; `make test` → all green.
+
+---
+
+## Task 4 — `head_to_head.py`: pairwise H2H history
+
+**Scope (files to touch).**
+- `src/matchodds/features/head_to_head.py` (new): `HeadToHeadAccumulator` keyed by the unordered `(league, teamA, teamB)` pair. `pre_match` emits, from the **current home team's perspective**: `h2h_matches`, `h2h_home_wins`, `h2h_draws`, `h2h_away_wins`, `h2h_home_goals_avg`, `h2h_away_goals_avg`. Cold start → `0` counts / `NaN` averages. Uses all prior meetings (no window — noted as a possible later refinement).
+- `src/matchodds/features/pipeline.py`: add `HeadToHeadAccumulator` to `default_accumulators()`.
+- `tests/unit/test_head_to_head.py` (new).
+
+**Acceptance criteria.**
+- On a rematch in the synthetic fixture, H2H counts/goals reflect only the earlier meeting(s); perspective is correct (home-team wins counted as `h2h_home_wins`).
+- **First meeting:** `h2h_matches == 0`, averages `NaN`.
+- **Leakage:** append-future invariance holds for all `h2h_*` columns.
+
+**Gate.** `make check` → PASS; `make test` → all green.
+
+---
+
+## Task 5 — `strength.py`: home/away venue strength (season-scoped)
+
+**Scope (files to touch).**
+- `src/matchodds/features/strength.py` (new): `StrengthAccumulator` keeping per-team, **season-scoped** (`season_of`) split venue records. `pre_match` emits the home team's home-venue record and the away team's away-venue record this season: `strength_home_ppg`, `strength_home_gf`, `strength_home_ga`, `strength_home_n` and the `strength_away_*` counterparts. Records reset at each season boundary; cold start / season start → `NaN` (with `_n = 0`).
+- `src/matchodds/features/pipeline.py`: add `StrengthAccumulator` to `default_accumulators()`.
+- `tests/unit/test_strength.py` (new).
+
+**Acceptance criteria.**
+- Pinned venue records match hand computation; home record uses only home-venue matches, away record only away-venue matches.
+- **Season reset:** the first home match of season 2 snapshots `strength_home_n == 0`, not season-1-carried values.
+- **Leakage:** append-future invariance holds for all `strength_*` columns.
+
+**Gate.** `make check` → PASS; `make test` → all green.
+
+---
+
+## Task 6 — `season.py`: season-progress features
+
+**Scope (files to touch).**
+- `src/matchodds/features/season.py` (new): `SeasonAccumulator` (uses `season_of` from `base.py`). `pre_match` emits `season_home_matchday`, `season_away_matchday` (count of that team's matches already played this season, +1), `season_fraction` (elapsed fraction of a 38-matchday season, capped at 1.0), and `days_since_last_match_home` / `_away` (rest days; `NaN` at season start).
+- `src/matchodds/features/pipeline.py`: add `SeasonAccumulator` to `default_accumulators()`.
+- `tests/unit/test_season.py` (new).
+
+**Acceptance criteria.**
+- Matchday counters increment per team within a season and **reset to 1** at the season boundary.
+- `days_since_last_match_*` matches the synthetic dates; `NaN` on the season's first appearance.
+- **Leakage:** append-future invariance holds for all `season_*` columns.
+
+**Gate.** `make check` → PASS; `make test` → all green.
+
+---
+
+## Task 7 — Materialize: `make features`, `features.parquet` + meta, end-to-end guards
+
+**Scope (files to touch).**
+- `src/matchodds/features/pipeline.py`: add `build(write=True)` (load via `matches.load()` → `build_feature_table(default_accumulators())` → write `processed_dir/features.parquet` + `features.meta.json`), a `main()` entrypoint, and the `if __name__ == "__main__"` guard — mirroring `data/matches.py`.
+- `makefile`: replace the `features` stub with `python -m matchodds.features.pipeline`.
+- `tests/unit/test_features_table.py` (new): end-to-end integration over the synthetic fixture.
+
+**Acceptance criteria.**
+- `build_feature_table(default_accumulators())` emits **all** feature columns (`elo_*`, `form_*`, `h2h_*`, `strength_*`, `season_*`) plus identifiers/label/odds, one row per match.
+- **End-to-end leakage guard:** fabricate a future result, rebuild, and assert every earlier row is byte-identical across the full feature set (the canonical "future cannot influence the past" test from the epic scope).
+- **Train/serve equivalence (Decision 2):** for a sampled match, the training-sweep row equals `features(date_cutoff=that match's date)` for that fixture — proving the shared code path.
+- `features.meta.json` records the feature-column list and the config params used.
+- `make features` succeeds against the real built `matches.parquet` locally (writes `features.parquet`).
+
+**Gate.** `make check` → PASS; `make test` → all green.
+
+---
+
+## Task 8 — `docs/feature-pipeline.md`: every feature + its pre-match snapshot
+
+**Scope (files to touch).**
+- `docs/feature-pipeline.md` (new): the contract and the single-pass design (snapshot-before-update); a table of every feature column with the exact pre-match snapshot it reads, its cold-start value, and the config param it depends on; the train/serve-shared code path; and how each leakage guard enforces the contract. Satisfies CLAUDE.md's rule that *every* feature documents which pre-match snapshot it reads.
+
+**Acceptance criteria.**
+- Every column produced by `build_feature_table` appears in the doc with its snapshot + cold-start behavior.
+- The leakage contract and the train/serve-equivalence guarantee are described.
+- Docs-only commit — no code changes.
+
+**Gate.** `make check` → PASS; `make test` → all green (unchanged).
+
+---
+
+## Definition of done (Epic 03)
+
+`make features` emits `processed_dir/features.parquet` from the built master matches table; the leakage guards pass (snapshot-before-update meta-test, per-feature append-future invariance, the end-to-end fabricate-future guard, and the train/serve-equivalence test); and every feature is documented with its pre-match snapshot in `docs/feature-pipeline.md`. On close-out: mark Epic 03 Done in `MASTER_PLAN.md` with the commit range and archive this file to `docs/history/epic-03-features.md`.
