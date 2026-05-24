@@ -10,7 +10,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 | Task | Description                                                          | Status         | Commit |
 |------|----------------------------------------------------------------------|----------------|--------|
-| 1    | Pipeline scaffold — accumulator contract, chronological driver, leakage harness, `season_of` | ⬜ Not started | —      |
+| 1    | Pipeline scaffold — accumulator contract, chronological driver, leakage harness, `season_of` | ✅ Done        | —      |
 | 2    | `elo.py` — pre-match Elo snapshot                                    | ⬜ Not started | —      |
 | 3    | `form.py` — rolling last-N form                                     | ⬜ Not started | —      |
 | 4    | `head_to_head.py` — pairwise H2H history                            | ⬜ Not started | —      |
@@ -27,7 +27,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ## Decisions baked in (flag at review to change)
 
-1. **Single-pass chronological accumulator design — the leakage guarantee is structural.** Each feature family is a stateful *accumulator* exposing two methods: `pre_match(home, away, league, date) -> dict[str, float]` (reads state built only from earlier matches) and `update(row) -> None` (folds in this match's result). The pipeline sorts matches chronologically and, for each match, **snapshots before it updates** — so a match's features can never see its own or any later result. Leakage-free *by construction*, not by a downstream check.
+1. **Single-pass chronological accumulator design — the leakage guarantee is structural.** Each feature family is a stateful *accumulator* exposing two methods: `pre_match(home, away, league, date) -> dict[str, float]` (reads state built only from earlier matches) and `update(match) -> None` (folds in this match's result). The pipeline sorts matches chronologically and **snapshots before it updates** — so a match's features can never see its own or any later result. Matches sharing a date are snapshotted as a *block* before any of them updates state, so a match's features never depend on another match played the same day (the master table has no kickoff times, so within-day order is unknown). Leakage-free *by construction*, not by a downstream check.
 2. **Two entrypoints in `pipeline.py`, one shared engine.** `build_feature_table(matches)` is the full training sweep (one pre-match row per historical match); `features(matches, fixtures, *, date_cutoff)` is the serving / point-in-time call (replay history `date < date_cutoff`, then snapshot the given fixtures — no result needed). Both drive the *same* accumulators, so there is no train/serve skew. A test pins their **equivalence**: a row from the training sweep equals `features(date_cutoff=that match's date)` for that fixture.
 3. **Cold-start policy.** A team/pair with no prior history gets neutral defaults: Elo = `elo_base`; rolling / venue / H2H features = `NaN` paired with an explicit count column (`*_n`, `h2h_matches`) so the model can learn the low-data regime. Imputation for estimators that can't take NaN (logreg) is **Epic 04's** job, not the pipeline's.
 4. **Odds pass through untouched.** `odds_home/draw/away` are legitimate pre-kickoff info (closing odds set before kickoff) and are carried into the feature table **as passthrough columns** for Epic 04's bookmaker baseline and Epic 07's betting-edge analysis. They are **not** turned into engineered model features here — keeping the model's signal independent of the bookmaker is a modeling decision deferred to Epic 04.
@@ -40,24 +40,22 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 1 — Pipeline scaffold: accumulator contract, chronological driver, leakage harness
+## Task 1 — Pipeline scaffold: accumulator contract, chronological driver, leakage harness — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/features/base.py` (new): the `FeatureAccumulator` `Protocol` — `feature_names: tuple[str, ...]`, `pre_match(home, away, league, date) -> dict[str, float]`, `update(row) -> None`. Plus the pure calendar helper `season_of(date) -> str` (July cutover) shared by later tasks.
-- `src/matchodds/features/pipeline.py` (new): the chronological engine.
-  - `build_feature_table(matches, accumulators=()) -> pd.DataFrame`: sort by `(date, league, home)`, iterate, **snapshot-before-update**, assemble each row from the accumulators' `pre_match` dicts + identifiers (`league, date, home, away`) + label (`result`) + odds passthrough.
-  - `features(matches, fixtures, *, date_cutoff, accumulators=()) -> pd.DataFrame`: replay `matches[date < date_cutoff]` into fresh accumulators, then snapshot each fixture row (no result/label).
-  - A module-level `default_accumulators()` returning the wired feature set — **empty tuple for now**; each later task appends its accumulator here.
-- `tests/fixtures/synthetic_matches.csv` (new): the deterministic fixture described in Decision 7.
-- `tests/unit/test_pipeline.py` (new): driver contract tests.
+**Outcome.**
+- `src/matchodds/features/base.py`: the `FeatureAccumulator` `Protocol` (`feature_names`, `pre_match(home, away, league, date) -> dict[str, float]`, `update(match: MatchRow) -> None`), the frozen `MatchRow` record fed to `update`, and the pure `season_of(date) -> str` helper (reuses `sources.season_code` + the July cutover).
+- `src/matchodds/features/pipeline.py`: the chronological engine — `build_feature_table(matches, accumulators=None)` (one pre-match row per match: identifiers + features + odds passthrough + `result` label) and `features(matches, fixtures, *, date_cutoff, accumulators=None)` (replay history `< cutoff`, then snapshot fixtures), both driven by `default_accumulators()` (empty until Tasks 2–6 wire the families in).
+- `tests/fixtures/synthetic_matches.csv`: deterministic 24-match fixture (4 teams, one league, two seasons, full home/away double round-robin, **two matches per date** so day-batching is exercised).
+- `tests/unit/test_pipeline.py`: 6 tests — chronological ordering, label/odds passthrough, the day-batched leakage meta-test, append-future invariance, the `features()` pre-cutoff contract, `season_of` cutover.
+- `.vulture_allowlist.py`: forward-consumed entrypoints (`build_feature_table`, `features`, `season_of`, `MatchRow` goal fields).
 
-**Acceptance criteria.**
-- `build_feature_table(synthetic)` returns exactly one row per match, in chronological order, carrying `league/date/home/away/result/odds_*` (no feature columns yet, since the default set is empty).
-- **Leakage meta-test:** an in-test probe accumulator records, at each `pre_match` call, how many `update` calls it has seen; the test asserts that for the i-th match it is exactly `i` (snapshot strictly precedes update; matches are fed in chronological order; no future match is ever visible).
-- **Append-future invariance:** appending a match dated after match *M* and rebuilding leaves *M*'s row byte-identical.
-- `season_of` returns the expected season label across a July boundary (e.g. `2023-07-31` → prior season, `2023-08-01` → new season).
+**Decisions / deviations (recorded).**
+- **Day-batched snapshot, not strict per-match.** A match snapshots after exactly the **strictly-earlier-dated** matches; same-day matches are excluded — the master table has no kickoff times, so within-day order is unknown and including them would be potential leakage. This makes `build_feature_table` and `features(date_cutoff)` provably equivalent (the Task 7 train/serve guarantee) and, since a team plays at most once per day, never changes a team-keyed feature value. The meta-test asserts this day-batched invariant rather than the spec's looser "i-th match sees exactly `i` updates" wording.
+- **Cutover is July 1, not August.** `season_of` mirrors `sources.recent_seasons` (`month >= 7` → new season), so `2023-07-31` resolves to the *new* season — correcting the spec's `2023-07-31 → prior season` example. Tested across the boundary.
+- **`accumulators=None` sentinel** (→ `default_accumulators()`) instead of a literal `()` default, so callers get the wired set by omission; the typed `MatchRow` (not a raw pandas row) is the `update` contract, decoupling accumulators from pandas.
+- Dropped `runtime_checkable` from the Protocol (no `isinstance` use → unused import).
 
-**Gate.** `make check` → PASS; `make test` → existing 27 + new pipeline tests pass.
+**Verification.** `make check` → PASS (isort, black, flake8, mypy strict on 12 files, bandit, vulture, nb-lint); `make test` → **33 passed** (27 prior + 6 pipeline). ✅
 
 ---
 

@@ -9,6 +9,8 @@ from matchodds import __metadata__
 from matchodds.config import Settings, settings
 from matchodds.data import matches, sources, teams
 from matchodds.data.schema import Match
+from matchodds.features import pipeline
+from matchodds.features.base import MatchRow, season_of
 
 __metadata__.__repository__
 
@@ -47,5 +49,14 @@ sources.load_raw
 # data.teams — normalize() consumed by the matches builder (Task 5).
 teams.normalize
 
-# data.matches — load() consumed by notebooks / the feature pipeline (Epic 03).
+# data.matches — load() consumed by notebooks / the feature pipeline (Task 7).
 matches.load
+
+# features.pipeline / features.base — public entrypoints consumed by tests now, `make features`
+# (Task 7) and the serving layer (Epic 05). MatchRow goal fields are read by the form / strength
+# accumulators (Tasks 3, 5); season_of by the strength / season accumulators (Tasks 5, 6).
+pipeline.build_feature_table
+pipeline.features
+season_of
+MatchRow.ft_home_goals
+MatchRow.ft_away_goals

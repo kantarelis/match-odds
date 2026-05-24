@@ -1,0 +1,25 @@
+league,date,home,away,ft_home_goals,ft_away_goals,result,odds_home,odds_draw,odds_away,source
+Test League,2022-08-06,Alpha,Beta,2,0,H,2.00,3.30,3.80,football-data
+Test League,2022-08-06,Gamma,Delta,1,1,D,2.00,3.30,3.80,football-data
+Test League,2022-09-10,Alpha,Gamma,3,1,H,2.00,3.30,3.80,football-data
+Test League,2022-09-10,Delta,Beta,0,2,A,2.00,3.30,3.80,football-data
+Test League,2022-10-15,Alpha,Delta,1,0,H,2.00,3.30,3.80,football-data
+Test League,2022-10-15,Beta,Gamma,2,2,D,2.00,3.30,3.80,football-data
+Test League,2023-02-04,Beta,Alpha,1,1,D,2.00,3.30,3.80,football-data
+Test League,2023-02-04,Delta,Gamma,0,1,A,2.00,3.30,3.80,football-data
+Test League,2023-03-11,Beta,Delta,3,0,H,2.00,3.30,3.80,football-data
+Test League,2023-03-11,Gamma,Alpha,0,2,A,2.00,3.30,3.80,football-data
+Test League,2023-04-15,Delta,Alpha,1,3,A,2.00,3.30,3.80,football-data
+Test League,2023-04-15,Gamma,Beta,2,1,H,2.00,3.30,3.80,football-data
+Test League,2023-08-12,Alpha,Beta,1,1,D,2.00,3.30,3.80,football-data
+Test League,2023-08-12,Gamma,Delta,2,0,H,2.00,3.30,3.80,football-data
+Test League,2023-09-16,Alpha,Gamma,0,1,A,2.00,3.30,3.80,football-data
+Test League,2023-09-16,Delta,Beta,1,2,A,2.00,3.30,3.80,football-data
+Test League,2023-10-21,Alpha,Delta,2,2,D,2.00,3.30,3.80,football-data
+Test League,2023-10-21,Beta,Gamma,1,0,H,2.00,3.30,3.80,football-data
+Test League,2024-02-10,Beta,Alpha,0,0,D,2.00,3.30,3.80,football-data
+Test League,2024-02-10,Delta,Gamma,2,1,H,2.00,3.30,3.80,football-data
+Test League,2024-03-16,Beta,Delta,2,2,D,2.00,3.30,3.80,football-data
+Test League,2024-03-16,Gamma,Alpha,1,1,D,2.00,3.30,3.80,football-data
+Test League,2024-04-20,Delta,Alpha,0,3,A,2.00,3.30,3.80,football-data
+Test League,2024-04-20,Gamma,Beta,3,1,H,2.00,3.30,3.80,football-data
