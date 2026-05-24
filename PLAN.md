@@ -16,7 +16,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 4    | `head_to_head.py` — pairwise H2H history                            | ✅ Done        | —      |
 | 5    | `strength.py` — home/away venue strength (season-scoped)            | ✅ Done        | —      |
 | 6    | `season.py` — season-progress features                              | ✅ Done        | —      |
-| 7    | Materialize: `make features`, `features.parquet` + meta, end-to-end leakage + train/serve-equivalence tests | ⬜ Not started | —      |
+| 7    | Materialize: `make features`, `features.parquet` + meta, end-to-end leakage + train/serve-equivalence tests | ✅ Done        | —      |
 | 8    | `docs/feature-pipeline.md` — every feature + its pre-match snapshot  | ⬜ Not started | —      |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
@@ -140,21 +140,19 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 7 — Materialize: `make features`, `features.parquet` + meta, end-to-end guards
+## Task 7 — Materialize: `make features`, `features.parquet` + meta, end-to-end guards — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/features/pipeline.py`: add `build(write=True)` (load via `matches.load()` → `build_feature_table(default_accumulators())` → write `processed_dir/features.parquet` + `features.meta.json`), a `main()` entrypoint, and the `if __name__ == "__main__"` guard — mirroring `data/matches.py`.
-- `makefile`: replace the `features` stub with `python -m matchodds.features.pipeline`.
-- `tests/unit/test_features_table.py` (new): end-to-end integration over the synthetic fixture.
+**Outcome.**
+- `src/matchodds/features/pipeline.py`: added `build(write=True)` (load via `matches.load()` → `build_feature_table(default_accumulators())` → write `processed_dir/features.parquet` + `features.meta.json`), `_write_meta` (feature-column list, config params, per-league counts, build timestamp), `main()`, and the `__main__` guard — mirroring `data/matches.py`.
+- `makefile`: `features` target now runs `$(PY) -m matchodds.features.pipeline`.
+- `.vulture_allowlist.py`: dropped `matches.load` and `pipeline.build_feature_table` (now consumed by `build()`); only `pipeline.features` remains forward-declared (Epic 05 serving).
+- `tests/unit/test_features_table.py`: 4 tests — exact column order + all five families + one row per match; the canonical **end-to-end leakage guard** (fabricate-future, earlier rows byte-identical across the full set); **train/serve equivalence** (cold-start / mid-season / last rows: training-sweep row equals `features(date_cutoff=match's date)`); `build()` writes parquet + meta with the feature list and params.
 
-**Acceptance criteria.**
-- `build_feature_table(default_accumulators())` emits **all** feature columns (`elo_*`, `form_*`, `h2h_*`, `strength_*`, `season_*`) plus identifiers/label/odds, one row per match.
-- **End-to-end leakage guard:** fabricate a future result, rebuild, and assert every earlier row is byte-identical across the full feature set (the canonical "future cannot influence the past" test from the epic scope).
-- **Train/serve equivalence (Decision 2):** for a sampled match, the training-sweep row equals `features(date_cutoff=that match's date)` for that fixture — proving the shared code path.
-- `features.meta.json` records the feature-column list and the config params used.
-- `make features` succeeds against the real built `matches.parquet` locally (writes `features.parquet`).
+**Decisions / deviations (recorded).**
+- None structural. Allowlist hygiene continued (`matches.load`, `build_feature_table` moved from forward-declared to consumed).
+- `features.parquet` / `features.meta.json` are gitignored build artifacts (under `data/`), reproduced by `make features` — not committed.
 
-**Gate.** `make check` → PASS; `make test` → all green.
+**Verification.** `make check` → PASS (mypy strict on 17 files, vulture clean); `make test` → **68 passed** (64 prior + 4 integration); `make features` on the real master table → **20,294 rows, 38 columns** (4 identifiers + 30 features + 3 odds + label), 100% as expected per league. ✅
 
 ---
 
