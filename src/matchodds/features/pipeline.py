@@ -23,6 +23,7 @@ from matchodds.features.base import FeatureAccumulator, MatchRow
 from matchodds.features.elo import EloAccumulator
 from matchodds.features.form import FormAccumulator
 from matchodds.features.head_to_head import HeadToHeadAccumulator
+from matchodds.features.strength import StrengthAccumulator
 
 _IDENTIFIERS = ["league", "date", "home", "away"]
 _ODDS = ["odds_home", "odds_draw", "odds_away"]
@@ -32,7 +33,7 @@ _SORT_KEYS = ["date", "league", "home", "away"]
 
 def default_accumulators() -> tuple[FeatureAccumulator, ...]:
     """The feature families wired into the pipeline (filled in as Epic 03 tasks land)."""
-    return (EloAccumulator(), FormAccumulator(), HeadToHeadAccumulator())
+    return (EloAccumulator(), FormAccumulator(), HeadToHeadAccumulator(), StrengthAccumulator())
 
 
 def _as_date(value: Any) -> dt.date:

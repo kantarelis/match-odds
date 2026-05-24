@@ -14,7 +14,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 2    | `elo.py` — pre-match Elo snapshot                                    | ✅ Done        | —      |
 | 3    | `form.py` — rolling last-N form                                     | ✅ Done        | —      |
 | 4    | `head_to_head.py` — pairwise H2H history                            | ✅ Done        | —      |
-| 5    | `strength.py` — home/away venue strength (season-scoped)            | ⬜ Not started | —      |
+| 5    | `strength.py` — home/away venue strength (season-scoped)            | ✅ Done        | —      |
 | 6    | `season.py` — season-progress features                              | ⬜ Not started | —      |
 | 7    | Materialize: `make features`, `features.parquet` + meta, end-to-end leakage + train/serve-equivalence tests | ⬜ Not started | —      |
 | 8    | `docs/feature-pipeline.md` — every feature + its pre-match snapshot  | ⬜ Not started | —      |
@@ -109,19 +109,19 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 5 — `strength.py`: home/away venue strength (season-scoped)
+## Task 5 — `strength.py`: home/away venue strength (season-scoped) — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/features/strength.py` (new): `StrengthAccumulator` keeping per-team, **season-scoped** (`season_of`) split venue records. `pre_match` emits the home team's home-venue record and the away team's away-venue record this season: `strength_home_ppg`, `strength_home_gf`, `strength_home_ga`, `strength_home_n` and the `strength_away_*` counterparts. Records reset at each season boundary; cold start / season start → `NaN` (with `_n = 0`).
-- `src/matchodds/features/pipeline.py`: add `StrengthAccumulator` to `default_accumulators()`.
-- `tests/unit/test_strength.py` (new).
+**Outcome.**
+- `src/matchodds/features/strength.py`: `StrengthAccumulator` keeps per-`(league, team, season, venue)` records (a `_VenueRecord` dataclass). `pre_match` reads the home team's **home-venue** record and the away team's **away-venue** record for the current season (`season_of(date)`), emitting `strength_{home,away}_{ppg,gf,ga,n}`. Records reset at each season boundary (season is part of the key); cold start / season start → `NaN` with `n == 0`. This is the first accumulator that reads the match `date`.
+- `src/matchodds/features/pipeline.py`: `default_accumulators()` returns `(EloAccumulator(), FormAccumulator(), HeadToHeadAccumulator(), StrengthAccumulator())`.
+- `.vulture_allowlist.py`: removed `season_of` and the two `MatchRow` goal-field entries (and the now-unused `base` import) — form / H2H / strength are their real consumers. The allowlist now only forward-declares `pipeline.build_feature_table` / `features` (consumed in Task 7).
+- `tests/unit/test_strength.py`: 6 tests — cold-start NaN, home-record-uses-only-home-matches, away-record-uses-only-away-matches, season reset, pipeline integration (Alpha's home count accumulates through season one then resets to 0 at the season-two opener), append-future leakage.
 
-**Acceptance criteria.**
-- Pinned venue records match hand computation; home record uses only home-venue matches, away record only away-venue matches.
-- **Season reset:** the first home match of season 2 snapshots `strength_home_n == 0`, not season-1-carried values.
-- **Leakage:** append-future invariance holds for all `strength_*` columns.
+**Decisions / deviations (recorded).**
+- None structural. `pre_match` keeps the `date` argument (consumed by `season_of`), so no `_date`.
+- Allowlist hygiene continued: `season_of` and `MatchRow.ft_*` moved from forward-declared to consumed.
 
-**Gate.** `make check` → PASS; `make test` → all green.
+**Verification.** `make check` → PASS (mypy strict on 16 files, vulture clean); `make test` → **58 passed** (52 prior + 6 strength). ✅
 
 ---
 
