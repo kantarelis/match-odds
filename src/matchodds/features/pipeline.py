@@ -14,17 +14,24 @@ from __future__ import annotations
 
 import datetime as dt
 import itertools
+import json
+import logging
 from collections.abc import Iterator, Sequence
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
+from matchodds.config import settings
+from matchodds.data.matches import load as load_master
 from matchodds.features.base import FeatureAccumulator, MatchRow
 from matchodds.features.elo import EloAccumulator
 from matchodds.features.form import FormAccumulator
 from matchodds.features.head_to_head import HeadToHeadAccumulator
 from matchodds.features.season import SeasonAccumulator
 from matchodds.features.strength import StrengthAccumulator
+
+logger = logging.getLogger(__name__)
 
 _IDENTIFIERS = ["league", "date", "home", "away"]
 _ODDS = ["odds_home", "odds_draw", "odds_away"]
@@ -143,3 +150,43 @@ def features(
         rows.append({"league": league, "date": date, "home": home, "away": away, **snapshot})
     columns = _IDENTIFIERS + _feature_columns(accs)
     return pd.DataFrame(rows, columns=columns)
+
+
+def _write_meta(table: pd.DataFrame, accumulators: Sequence[FeatureAccumulator], processed_dir: Path) -> None:
+    by_league = table["league"].value_counts().to_dict()
+    meta = {
+        "built_at": dt.datetime.now(dt.UTC).isoformat(),
+        "rows": int(len(table)),
+        "leagues": {str(league): int(count) for league, count in by_league.items()},
+        "features": list(_feature_columns(accumulators)),
+        "params": {
+            "elo_base": settings.elo_base,
+            "elo_k": settings.elo_k,
+            "elo_home_advantage": settings.elo_home_advantage,
+            "rolling_window_n": settings.rolling_window_n,
+        },
+        "source": "matches.meta.json",
+    }
+    (processed_dir / "features.meta.json").write_text(json.dumps(meta, indent=2))
+
+
+def build(write: bool = True) -> pd.DataFrame:
+    """Build the feature table from the master matches table; optionally write parquet + meta."""
+    accumulators = default_accumulators()
+    table = build_feature_table(load_master(), accumulators)
+    if write:
+        processed_dir = settings.processed_dir
+        processed_dir.mkdir(parents=True, exist_ok=True)
+        table.to_parquet(processed_dir / "features.parquet", index=False)
+        _write_meta(table, accumulators, processed_dir)
+    return table
+
+
+def main() -> None:
+    table = build()
+    logger.info("built feature table: %d rows, %d columns", len(table), len(table.columns))
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    main()

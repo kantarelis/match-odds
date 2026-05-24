@@ -7,7 +7,7 @@ line-level suppression. Remove entries as their real consumers land in later epi
 
 from matchodds import __metadata__
 from matchodds.config import Settings, settings
-from matchodds.data import matches, sources, teams
+from matchodds.data import sources, teams
 from matchodds.data.schema import Match
 from matchodds.features import pipeline
 
@@ -47,11 +47,7 @@ sources.load_raw
 # data.teams — normalize() consumed by the matches builder (Task 5).
 teams.normalize
 
-# data.matches — load() consumed by notebooks / the feature pipeline (Task 7).
-matches.load
-
-# features.pipeline — public entrypoints consumed by tests now, by `make features` (Task 7) and by
-# the serving layer (Epic 05). (MatchRow goal fields and season_of now have real src consumers in
-# the form / H2H / strength accumulators.)
-pipeline.build_feature_table
+# features.pipeline.features — the point-in-time serving entrypoint; consumed by tests now and by
+# the serving layer (Epic 05). (build_feature_table and matches.load now have real src consumers
+# via pipeline.build / `make features`.)
 pipeline.features
