@@ -32,6 +32,7 @@ src_paths = ["src", "tests", "serving", "demo"]
 [tool.mypy]
 python_version = "3.14"
 strict = true
+plugins = ["pydantic.mypy"]
 files = ["src"]
 mypy_path = "src"
 explicit_package_bases = true

@@ -1,0 +1,186 @@
+English Premier League	Arsenal
+English Premier League	Aston Villa
+English Premier League	Bournemouth
+English Premier League	Brentford
+English Premier League	Brighton
+English Premier League	Burnley
+English Premier League	Cardiff
+English Premier League	Chelsea
+English Premier League	Crystal Palace
+English Premier League	Everton
+English Premier League	Fulham
+English Premier League	Huddersfield
+English Premier League	Hull
+English Premier League	Ipswich
+English Premier League	Leeds
+English Premier League	Leicester
+English Premier League	Liverpool
+English Premier League	Luton
+English Premier League	Man City
+English Premier League	Man United
+English Premier League	Middlesbrough
+English Premier League	Newcastle
+English Premier League	Norwich
+English Premier League	Nott'm Forest
+English Premier League	Sheffield United
+English Premier League	Southampton
+English Premier League	Stoke
+English Premier League	Sunderland
+English Premier League	Swansea
+English Premier League	Tottenham
+English Premier League	Watford
+English Premier League	West Brom
+English Premier League	West Ham
+English Premier League	Wolves
+Spanish La Liga	Alaves
+Spanish La Liga	Almeria
+Spanish La Liga	Ath Bilbao
+Spanish La Liga	Ath Madrid
+Spanish La Liga	Barcelona
+Spanish La Liga	Betis
+Spanish La Liga	Cadiz
+Spanish La Liga	Celta
+Spanish La Liga	Eibar
+Spanish La Liga	Elche
+Spanish La Liga	Espanol
+Spanish La Liga	Getafe
+Spanish La Liga	Girona
+Spanish La Liga	Granada
+Spanish La Liga	Huesca
+Spanish La Liga	La Coruna
+Spanish La Liga	Las Palmas
+Spanish La Liga	Leganes
+Spanish La Liga	Levante
+Spanish La Liga	Malaga
+Spanish La Liga	Mallorca
+Spanish La Liga	Osasuna
+Spanish La Liga	Oviedo
+Spanish La Liga	Real Madrid
+Spanish La Liga	Sevilla
+Spanish La Liga	Sociedad
+Spanish La Liga	Sp Gijon
+Spanish La Liga	Valencia
+Spanish La Liga	Valladolid
+Spanish La Liga	Vallecano
+Spanish La Liga	Villarreal
+Italian Serie A	Atalanta
+Italian Serie A	Benevento
+Italian Serie A	Bologna
+Italian Serie A	Brescia
+Italian Serie A	Cagliari
+Italian Serie A	Chievo
+Italian Serie A	Como
+Italian Serie A	Cremonese
+Italian Serie A	Crotone
+Italian Serie A	Empoli
+Italian Serie A	Fiorentina
+Italian Serie A	Frosinone
+Italian Serie A	Genoa
+Italian Serie A	Inter
+Italian Serie A	Juventus
+Italian Serie A	Lazio
+Italian Serie A	Lecce
+Italian Serie A	Milan
+Italian Serie A	Monza
+Italian Serie A	Napoli
+Italian Serie A	Palermo
+Italian Serie A	Parma
+Italian Serie A	Pescara
+Italian Serie A	Pisa
+Italian Serie A	Roma
+Italian Serie A	Salernitana
+Italian Serie A	Sampdoria
+Italian Serie A	Sassuolo
+Italian Serie A	Spal
+Italian Serie A	Spezia
+Italian Serie A	Torino
+Italian Serie A	Udinese
+Italian Serie A	Venezia
+Italian Serie A	Verona
+German Bundesliga	Augsburg
+German Bundesliga	Bayern Munich
+German Bundesliga	Bielefeld
+German Bundesliga	Bochum
+German Bundesliga	Darmstadt
+German Bundesliga	Dortmund
+German Bundesliga	Ein Frankfurt
+German Bundesliga	FC Koln
+German Bundesliga	Fortuna Dusseldorf
+German Bundesliga	Freiburg
+German Bundesliga	Greuther Furth
+German Bundesliga	Hamburg
+German Bundesliga	Hannover
+German Bundesliga	Heidenheim
+German Bundesliga	Hertha
+German Bundesliga	Hoffenheim
+German Bundesliga	Holstein Kiel
+German Bundesliga	Ingolstadt
+German Bundesliga	Leverkusen
+German Bundesliga	M'gladbach
+German Bundesliga	Mainz
+German Bundesliga	Nurnberg
+German Bundesliga	Paderborn
+German Bundesliga	RB Leipzig
+German Bundesliga	Schalke 04
+German Bundesliga	St Pauli
+German Bundesliga	Stuttgart
+German Bundesliga	Union Berlin
+German Bundesliga	Werder Bremen
+German Bundesliga	Wolfsburg
+French Ligue 1	Ajaccio
+French Ligue 1	Amiens
+French Ligue 1	Angers
+French Ligue 1	Auxerre
+French Ligue 1	Bastia
+French Ligue 1	Bordeaux
+French Ligue 1	Brest
+French Ligue 1	Caen
+French Ligue 1	Clermont
+French Ligue 1	Dijon
+French Ligue 1	Guingamp
+French Ligue 1	Le Havre
+French Ligue 1	Lens
+French Ligue 1	Lille
+French Ligue 1	Lorient
+French Ligue 1	Lyon
+French Ligue 1	Marseille
+French Ligue 1	Metz
+French Ligue 1	Monaco
+French Ligue 1	Montpellier
+French Ligue 1	Nancy
+French Ligue 1	Nantes
+French Ligue 1	Nice
+French Ligue 1	Nimes
+French Ligue 1	Paris FC
+French Ligue 1	Paris SG
+French Ligue 1	Reims
+French Ligue 1	Rennes
+French Ligue 1	St Etienne
+French Ligue 1	Strasbourg
+French Ligue 1	Toulouse
+French Ligue 1	Troyes
+Greek Super League	AEK
+Greek Super League	Apollon
+Greek Super League	Aris
+Greek Super League	Asteras Tripolis
+Greek Super League	Athens Kallithea
+Greek Super League	Atromitos
+Greek Super League	Giannina
+Greek Super League	Ionikos
+Greek Super League	Iraklis
+Greek Super League	Kerkyra
+Greek Super League	Kifisia
+Greek Super League	Lamia
+Greek Super League	Larisa
+Greek Super League	Levadeiakos
+Greek Super League	OFI Crete
+Greek Super League	Olympiakos
+Greek Super League	PAOK
+Greek Super League	Panathinaikos
+Greek Super League	Panetolikos
+Greek Super League	Panionios
+Greek Super League	Panserraikos
+Greek Super League	Platanias
+Greek Super League	Veria
+Greek Super League	Volos NFC
+Greek Super League	Xanthi

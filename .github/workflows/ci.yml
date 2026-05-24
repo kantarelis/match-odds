@@ -30,3 +30,10 @@ jobs:
 
       - name: Notebook lint
         run: make nb-lint
+
+      - name: Data notebook smoke (offline sample)
+        env:
+          MATCHODDS_DATA_DIR: ${{ github.workspace }}/tests/fixtures/sample
+        run: |
+          .venv/bin/python -c "from matchodds.data import matches; matches.build()"
+          make nb-run

@@ -1,22 +1,18 @@
-"""Project-wide configuration: reproducibility seed, filesystem paths, and modelling constants."""
+"""Project-wide configuration via pydantic-settings.
+
+``settings`` is the single typed config object. Every field is overridable through a
+``MATCHODDS_``-prefixed environment variable (e.g. ``MATCHODDS_DATA_DIR=/tmp/x``) — this is how CI
+points the data notebook at committed sample fixtures without touching code.
+"""
 
 from pathlib import Path
 
-# Reproducibility — flows into every split, model, and calibrator (see CLAUDE.md → Determinism).
-RANDOM_SEED: int = 42
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Filesystem layout, derived from the repo root rather than hard-coded absolute paths.
-REPO_ROOT: Path = Path(__file__).resolve().parents[2]
-DATA_DIR: Path = REPO_ROOT / "data"
-RAW_DIR: Path = DATA_DIR / "raw"
-PROCESSED_DIR: Path = DATA_DIR / "processed"
-MODELS_DIR: Path = REPO_ROOT / "models"
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# Rolling-form window: number of prior matches per team used by the form feature (Epic 03).
-ROLLING_WINDOW_N: int = 5
-
-# Leagues in scope. Default set; Epic 02 may refine as source coverage is confirmed.
-LEAGUES: tuple[str, ...] = (
+# Default leagues in scope: Greek Super League + the top-5 EU leagues.
+_DEFAULT_LEAGUES: tuple[str, ...] = (
     "Greek Super League",
     "English Premier League",
     "Spanish La Liga",
@@ -24,3 +20,40 @@ LEAGUES: tuple[str, ...] = (
     "German Bundesliga",
     "French Ligue 1",
 )
+
+
+class Settings(BaseSettings):
+    """Typed, environment-overridable project configuration (env prefix ``MATCHODDS_``)."""
+
+    model_config = SettingsConfigDict(env_prefix="MATCHODDS_", extra="ignore")
+
+    # Reproducibility — flows into every split, model, and calibrator (see CLAUDE.md → Determinism).
+    random_seed: int = 42
+
+    # Feature pipeline (Epic 03): rolling-form window, in matches per team.
+    rolling_window_n: int = 5
+
+    # Data scope.
+    leagues: tuple[str, ...] = _DEFAULT_LEAGUES
+    seasons_back: int = 10
+
+    # Public data source (football-data.co.uk).
+    football_data_base_url: str = "https://www.football-data.co.uk/mmz4281/"
+
+    # Filesystem layout. ``data_dir`` is the env-overridable root; raw/processed derive from it.
+    repo_root: Path = _REPO_ROOT
+    data_dir: Path = _REPO_ROOT / "data"
+    models_dir: Path = _REPO_ROOT / "models"
+
+    @property
+    def raw_dir(self) -> Path:
+        """Raw downloaded CSVs (gitignored)."""
+        return self.data_dir / "raw"
+
+    @property
+    def processed_dir(self) -> Path:
+        """Cleaned master matches table and feature tables (gitignored)."""
+        return self.data_dir / "processed"
+
+
+settings = Settings()

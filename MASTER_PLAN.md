@@ -14,7 +14,7 @@ See [`CLAUDE.md`](CLAUDE.md) → *Development Methodology* for the full Epic →
 | #  | Epic                                         | Plan steps | Status         | Branch              | Commit range |
 |----|----------------------------------------------|------------|----------------|---------------------|--------------|
 | 01 | Repo Scaffold, Tooling & CI Skeleton         | 2.1        | ✅ Done        | `implement-scaffold-tooling-and-ci-skeleton` | `e84115d..f793d2f` |
-| 02 | Data Acquisition & Cleaning                  | 2.2        | ⬜ Not started | `epic-02-data`      | —            |
+| 02 | Data Acquisition & Cleaning                  | 2.2        | ✅ Done        | `implement-data-acquisition-and-cleansing` | `f1fe3d3..fdd6359` |
 | 03 | Feature Pipeline (leakage-free)              | 2.3        | ⬜ Not started | `epic-03-features`  | —            |
 | 04 | Modeling, Evaluation & Calibration           | 2.4, 2.5   | ⬜ Not started | `epic-04-modeling`  | —            |
 | 05 | FastAPI Inference Service (Dockerised)       | 2.6        | ⬜ Not started | `epic-05-serving`   | —            |
@@ -48,11 +48,11 @@ See [`CLAUDE.md`](CLAUDE.md) → *Development Methodology* for the full Epic →
 
 ## Epic 02 — Data Acquisition & Cleaning
 
-**Goal.** Turn public multi-source CSVs into one clean, canonical master matches table — reproducibly, with no committed data.
+**Goal.** Turn public football-data.co.uk CSVs into one clean, canonical master matches table — reproducibly, with no committed data.
 
 **Scope.**
-- `matchodds.data.sources`: pinned-URL download clients for football-data.co.uk + openfootball into `data/raw/`.
-- `matchodds.data.teams`: canonical team-name normalization map across sources, with a test asserting every raw name in scope resolves.
+- `matchodds.data.sources`: pinned-URL download client for football-data.co.uk — one CSV per league-season (`E0`/`SP1`/`I1`/`D1`/`F1`/`G1`) into `data/raw/`, with caching + a version manifest.
+- `matchodds.data.teams`: canonical team-name normalization map for the football-data.co.uk spellings, with a test asserting every raw name in scope resolves.
 - `matchodds.data.matches`: build + de-duplicate the master matches table → `data/processed/matches.parquet` (one row per match, normalized teams, league, date, full-time result, **full-time goals (FTHG/FTAG) — required by the Dixon-Coles goals model in Epic 04**, bookmaker closing odds where available).
 - `matchodds.data.schema`: a Pydantic v2 `Match` model validating each parsed row at the ingestion edge before loading into the DataFrame. This epic adds `pydantic` + `pydantic-settings` to `requirements.txt` and graduates `config.py` to a typed `Settings` (pydantic-settings).
 - `make data` runs the whole acquisition + cleaning chain.
