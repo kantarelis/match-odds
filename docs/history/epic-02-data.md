@@ -8,14 +8,14 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ## Progress
 
-| Task | Description                                                    | Status         | Commit |
-|------|----------------------------------------------------------------|----------------|--------|
-| 1    | Data deps, `config` → pydantic `Settings`, parquet engine      | ✅ Done        | —      |
-| 2    | `data.schema` — Pydantic `Match` model + validation            | ✅ Done        | —      |
-| 3    | `data.sources` — download client + version manifest            | ✅ Done        | —      |
-| 4    | `data.teams` — canonical team-name normalization               | ✅ Done        | —      |
-| 5    | `data.matches` — build master table + `make data`              | ✅ Done        | —      |
-| 6    | `01_data.ipynb` + wire `make nb-run` into CI                   | ✅ Done        | —      |
+| Task | Description                                                    | Status         | Commit    |
+|------|----------------------------------------------------------------|----------------|-----------|
+| 1    | Data deps, `config` → pydantic `Settings`, parquet engine      | ✅ Done        | `2028120` |
+| 2    | `data.schema` — Pydantic `Match` model + validation            | ✅ Done        | `cb24fcc` |
+| 3    | `data.sources` — download client + version manifest            | ✅ Done        | `77401eb` |
+| 4    | `data.teams` — canonical team-name normalization               | ✅ Done        | `c711651` |
+| 5    | `data.matches` — build master table + `make data`              | ✅ Done        | `fdd6359` |
+| 6    | `01_data.ipynb` + wire `make nb-run` into CI                   | ✅ Done        | `6d7a03b` |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
 
