@@ -12,7 +12,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 |------|----------------------------------------------------------------------|----------------|--------|
 | 1    | Pipeline scaffold — accumulator contract, chronological driver, leakage harness, `season_of` | ✅ Done        | —      |
 | 2    | `elo.py` — pre-match Elo snapshot                                    | ✅ Done        | —      |
-| 3    | `form.py` — rolling last-N form                                     | ⬜ Not started | —      |
+| 3    | `form.py` — rolling last-N form                                     | ✅ Done        | —      |
 | 4    | `head_to_head.py` — pairwise H2H history                            | ⬜ Not started | —      |
 | 5    | `strength.py` — home/away venue strength (season-scoped)            | ⬜ Not started | —      |
 | 6    | `season.py` — season-progress features                              | ⬜ Not started | —      |
@@ -78,20 +78,19 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 3 — `form.py`: rolling last-N form
+## Task 3 — `form.py`: rolling last-N form — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/features/form.py` (new): `FormAccumulator` over `settings.rolling_window_n`. Per team, a deque of the last N `(points, goals_for, goals_against)`. `pre_match` emits for home and away: `form_{side}_ppg`, `form_{side}_gf`, `form_{side}_ga` (means over the last ≤N matches) and `form_{side}_n` (matches available); cold start → `NaN` (with `_n = 0`).
-- `src/matchodds/features/pipeline.py`: add `FormAccumulator` to `default_accumulators()`.
-- `tests/unit/test_form.py` (new).
+**Outcome.**
+- `src/matchodds/features/form.py`: `FormAccumulator` keeps a per-`(league, team)` deque of the last `settings.rolling_window_n` matches (any venue) holding `(points, goals_for, goals_against)`. `pre_match` emits rolling means for both sides — `form_{home,away}_{ppg,gf,ga}` — plus a `form_{home,away}_n` count; cold start is `NaN` with `n == 0`. Constructor takes an optional `window` override for tests.
+- `src/matchodds/features/pipeline.py`: `default_accumulators()` returns `(EloAccumulator(), FormAccumulator())`.
+- `.vulture_allowlist.py`: removed `settings.rolling_window_n` now that `form.py` consumes it (per the allowlist's "remove as consumers land" rule).
+- `tests/unit/test_form.py`: 6 tests — cold-start NaN/zero-count, two-venue rolling means, window bound (oldest drops at `window=2`), away-perspective correctness, pipeline integration (cold-start first row), append-future leakage.
 
-**Acceptance criteria.**
-- Pinned rolling means match hand computation on the synthetic fixture.
-- **Window bound:** with >N prior matches, only the last N contribute (older results drop out).
-- **Cold start:** `form_*_n == 0` and `form_*_ppg/gf/ga` are `NaN` on a team's first match.
-- **Leakage:** append-future invariance holds for all `form_*` columns.
+**Decisions / deviations (recorded).**
+- None structural. Form is date-agnostic, so it reuses the positional-only `_date` pattern from Task 2.
+- Allowlist hygiene: `settings.rolling_window_n` moved from forward-declared to consumed.
 
-**Gate.** `make check` → PASS; `make test` → all green.
+**Verification.** `make check` → PASS (mypy strict on 14 files, vulture clean); `make test` → **46 passed** (40 prior + 6 form). ✅
 
 ---
 

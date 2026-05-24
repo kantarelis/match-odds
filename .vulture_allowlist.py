@@ -17,7 +17,6 @@ __metadata__.__repository__
 # config.Settings fields/properties are read by later epics (data, features, modelling, serving).
 Settings.model_config
 settings.random_seed
-settings.rolling_window_n
 settings.leagues
 settings.seasons_back
 settings.football_data_base_url
