@@ -36,9 +36,9 @@ class _Probe:
 
 def test_build_emits_one_row_per_match_in_date_order():
     matches = _load()
-    table = pipeline.build_feature_table(matches)
+    table = pipeline.build_feature_table(matches, accumulators=[])
     assert len(table) == len(matches)
-    # No accumulators wired yet: identifiers + odds + label only, label last.
+    # Driver with no accumulators: identifiers + odds + label only, label last.
     assert list(table.columns) == ["league", "date", "home", "away", "odds_home", "odds_draw", "odds_away", "result"]
     dates = list(table["date"])
     assert dates == sorted(dates)
@@ -46,7 +46,7 @@ def test_build_emits_one_row_per_match_in_date_order():
 
 def test_label_and_odds_passthrough():
     matches = _load()
-    table = pipeline.build_feature_table(matches)
+    table = pipeline.build_feature_table(matches, accumulators=[])
     assert set(table["result"]) == {"H", "D", "A"}
     assert (table["odds_home"] == 2.0).all()
     # The first Alpha-vs-Beta meeting is a 2-0 home win.

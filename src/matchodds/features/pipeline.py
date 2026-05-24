@@ -20,6 +20,7 @@ from typing import Any
 import pandas as pd
 
 from matchodds.features.base import FeatureAccumulator, MatchRow
+from matchodds.features.elo import EloAccumulator
 
 _IDENTIFIERS = ["league", "date", "home", "away"]
 _ODDS = ["odds_home", "odds_draw", "odds_away"]
@@ -29,7 +30,7 @@ _SORT_KEYS = ["date", "league", "home", "away"]
 
 def default_accumulators() -> tuple[FeatureAccumulator, ...]:
     """The feature families wired into the pipeline (filled in as Epic 03 tasks land)."""
-    return ()
+    return (EloAccumulator(),)
 
 
 def _as_date(value: Any) -> dt.date:

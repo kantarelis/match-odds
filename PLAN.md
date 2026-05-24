@@ -11,7 +11,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | Task | Description                                                          | Status         | Commit |
 |------|----------------------------------------------------------------------|----------------|--------|
 | 1    | Pipeline scaffold — accumulator contract, chronological driver, leakage harness, `season_of` | ✅ Done        | —      |
-| 2    | `elo.py` — pre-match Elo snapshot                                    | ⬜ Not started | —      |
+| 2    | `elo.py` — pre-match Elo snapshot                                    | ✅ Done        | —      |
 | 3    | `form.py` — rolling last-N form                                     | ⬜ Not started | —      |
 | 4    | `head_to_head.py` — pairwise H2H history                            | ⬜ Not started | —      |
 | 5    | `strength.py` — home/away venue strength (season-scoped)            | ⬜ Not started | —      |
@@ -59,22 +59,22 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 2 — `elo.py`: pre-match Elo snapshot
+## Task 2 — `elo.py`: pre-match Elo snapshot — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/config.py`: add `elo_base: float = 1500.0`, `elo_k: float = 20.0`, `elo_home_advantage: float = 65.0`.
-- `src/matchodds/features/elo.py` (new): `EloAccumulator` — per-`(league, team)` rating; `pre_match` emits `elo_home`, `elo_away`, `elo_diff` (= `elo_home + elo_home_advantage − elo_away`); `update` applies standard Elo with the home-advantage-adjusted expected score and a result-based actual score (W/D/L → 1/0.5/0). Cold start = `elo_base`.
-- `src/matchodds/features/pipeline.py`: add `EloAccumulator` to `default_accumulators()`.
-- `tests/unit/test_elo.py` (new).
+**Outcome.**
+- `src/matchodds/features/elo.py`: `EloAccumulator` keyed by `(league, team)`; `pre_match` emits `elo_home` / `elo_away` / `elo_diff` (diff carries the home-advantage bonus); `update` applies the standard logistic Elo with a 1 / 0.5 / 0 result score and a zero-sum delta. Cold start = `settings.elo_base`. The constructor takes optional `base` / `k` / `home_advantage` overrides (defaulting to `settings`) so tests pin hand-computable math.
+- `src/matchodds/config.py`: added `elo_base` (1500.0), `elo_k` (20.0), `elo_home_advantage` (65.0).
+- `src/matchodds/features/pipeline.py`: `default_accumulators()` returns `(EloAccumulator(),)`.
+- `src/matchodds/features/base.py`: made the Protocol's `pre_match` / `update` params **positional-only** (see deviation).
+- `tests/unit/test_elo.py`: 7 tests — cold start + home-advantage diff, K-factor / result-score update math, zero-sum conservation, sequential carry-forward, league isolation, pipeline integration (cold-start first row), and Elo-specific append-future leakage.
+- `tests/unit/test_pipeline.py`: the two driver tests now pass `accumulators=[]`.
 
-**Acceptance criteria.**
-- Pinned Elo values after a known synthetic sequence match hand computation; `elo_diff` includes the home-advantage term.
-- **Conservation:** the two teams' rating changes from a match sum to ~0 (zero-sum update).
-- **Cold start:** a team's first match snapshots `elo_base` for it.
-- **League isolation:** ratings keyed by `(league, team)` — a small two-league case asserts no cross-league contamination.
-- **Leakage:** appending a future match does not change any earlier `elo_*` row.
+**Decisions / deviations (recorded).**
+- **Protocol params made positional-only** (touches `base.py`). Elo's `pre_match` ignores `date`, and vulture flags unused arguments at 100% but ignores `_`-prefixed names (confirmed empirically); positional-only params let an accumulator rename the unused one to `_date` without breaking structural conformance — no line-level silencer. The pipeline already calls these positionally. This is the pattern the date-agnostic accumulators (form, H2H) reuse.
+- **Two Task-1 driver tests updated** to pass `accumulators=[]`, since wiring Elo means the bare-default path now carries `elo_*` columns. The driver-in-isolation contract is unchanged.
+- **New `elo_*` settings are consumed by `elo.py`**, so — unlike the earlier forward-declared config — they need no `.vulture_allowlist.py` entry.
 
-**Gate.** `make check` → PASS (new `settings` fields consumed by `elo.py`, so vulture stays clean); `make test` → all green.
+**Verification.** `make check` → PASS (mypy strict on 13 files, vulture clean); `make test` → **40 passed** (33 prior + 7 Elo). ✅
 
 ---
 

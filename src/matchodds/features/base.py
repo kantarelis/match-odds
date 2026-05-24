@@ -40,11 +40,15 @@ class FeatureAccumulator(Protocol):
         """The feature column names this accumulator emits (fixes column order in the table)."""
         ...
 
-    def pre_match(self, home: str, away: str, league: str, date: dt.date) -> dict[str, float]:
-        """Pre-kickoff feature values for a fixture, from state built only from earlier matches."""
+    def pre_match(self, home: str, away: str, league: str, date: dt.date, /) -> dict[str, float]:
+        """Pre-kickoff feature values for a fixture, from state built only from earlier matches.
+
+        Arguments are positional-only, so an accumulator that does not need one (e.g. Elo ignores
+        ``date``) may rename it ``_date`` without breaking structural conformance.
+        """
         ...
 
-    def update(self, match: MatchRow) -> None:
+    def update(self, match: MatchRow, /) -> None:
         """Fold a played match into the accumulator's state."""
         ...
 
