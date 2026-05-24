@@ -13,7 +13,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 1    | Pipeline scaffold — accumulator contract, chronological driver, leakage harness, `season_of` | ✅ Done        | —      |
 | 2    | `elo.py` — pre-match Elo snapshot                                    | ✅ Done        | —      |
 | 3    | `form.py` — rolling last-N form                                     | ✅ Done        | —      |
-| 4    | `head_to_head.py` — pairwise H2H history                            | ⬜ Not started | —      |
+| 4    | `head_to_head.py` — pairwise H2H history                            | ✅ Done        | —      |
 | 5    | `strength.py` — home/away venue strength (season-scoped)            | ⬜ Not started | —      |
 | 6    | `season.py` — season-progress features                              | ⬜ Not started | —      |
 | 7    | Materialize: `make features`, `features.parquet` + meta, end-to-end leakage + train/serve-equivalence tests | ⬜ Not started | —      |
@@ -94,19 +94,18 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 4 — `head_to_head.py`: pairwise H2H history
+## Task 4 — `head_to_head.py`: pairwise H2H history — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/features/head_to_head.py` (new): `HeadToHeadAccumulator` keyed by the unordered `(league, teamA, teamB)` pair. `pre_match` emits, from the **current home team's perspective**: `h2h_matches`, `h2h_home_wins`, `h2h_draws`, `h2h_away_wins`, `h2h_home_goals_avg`, `h2h_away_goals_avg`. Cold start → `0` counts / `NaN` averages. Uses all prior meetings (no window — noted as a possible later refinement).
-- `src/matchodds/features/pipeline.py`: add `HeadToHeadAccumulator` to `default_accumulators()`.
-- `tests/unit/test_head_to_head.py` (new).
+**Outcome.**
+- `src/matchodds/features/head_to_head.py`: `HeadToHeadAccumulator` keeps a per-`(league, team_lo, team_hi)` running tally (a small `_PairRecord` dataclass) of prior meetings. `pre_match` reports from the **current home team's perspective**: `h2h_matches`, `h2h_home_wins`, `h2h_draws`, `h2h_away_wins`, `h2h_home_goals_avg`, `h2h_away_goals_avg`. Cold start → zero counts / `NaN` averages. All prior meetings count (venue- and recency-agnostic).
+- `src/matchodds/features/pipeline.py`: `default_accumulators()` returns `(EloAccumulator(), FormAccumulator(), HeadToHeadAccumulator())`.
+- `tests/unit/test_head_to_head.py`: 6 tests — first-meeting zero/NaN, home-perspective counts + goal averages, perspective flip on the reverse fixture, pair isolation, pipeline integration (the second Alpha–Beta meeting correctly sees 2 priors), append-future leakage.
 
-**Acceptance criteria.**
-- On a rematch in the synthetic fixture, H2H counts/goals reflect only the earlier meeting(s); perspective is correct (home-team wins counted as `h2h_home_wins`).
-- **First meeting:** `h2h_matches == 0`, averages `NaN`.
-- **Leakage:** append-future invariance holds for all `h2h_*` columns.
+**Decisions / deviations (recorded).**
+- None structural. Date-agnostic, so it reuses the positional-only `_date` pattern; no new settings → no allowlist change.
+- Win attribution uses an explicit `winner = home if result == "H" else away; winner == lo` rather than boolean arithmetic, for readability.
 
-**Gate.** `make check` → PASS; `make test` → all green.
+**Verification.** `make check` → PASS (mypy strict on 15 files, vulture clean); `make test` → **52 passed** (46 prior + 6 H2H). ✅
 
 ---
 
