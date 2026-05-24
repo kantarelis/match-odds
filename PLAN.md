@@ -15,7 +15,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 3    | `form.py` — rolling last-N form                                     | ✅ Done        | —      |
 | 4    | `head_to_head.py` — pairwise H2H history                            | ✅ Done        | —      |
 | 5    | `strength.py` — home/away venue strength (season-scoped)            | ✅ Done        | —      |
-| 6    | `season.py` — season-progress features                              | ⬜ Not started | —      |
+| 6    | `season.py` — season-progress features                              | ✅ Done        | —      |
 | 7    | Materialize: `make features`, `features.parquet` + meta, end-to-end leakage + train/serve-equivalence tests | ⬜ Not started | —      |
 | 8    | `docs/feature-pipeline.md` — every feature + its pre-match snapshot  | ⬜ Not started | —      |
 
@@ -125,19 +125,18 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 6 — `season.py`: season-progress features
+## Task 6 — `season.py`: season-progress features — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/features/season.py` (new): `SeasonAccumulator` (uses `season_of` from `base.py`). `pre_match` emits `season_home_matchday`, `season_away_matchday` (count of that team's matches already played this season, +1), `season_fraction` (elapsed fraction of a 38-matchday season, capped at 1.0), and `days_since_last_match_home` / `_away` (rest days; `NaN` at season start).
-- `src/matchodds/features/pipeline.py`: add `SeasonAccumulator` to `default_accumulators()`.
-- `tests/unit/test_season.py` (new).
+**Outcome.**
+- `src/matchodds/features/season.py`: `SeasonAccumulator` tracks per-`(league, team, season)` matches-played and last-match-date (a `_TeamSeason` dataclass). `pre_match` emits `season_{home,away}_matchday` (matches played this season + 1), `season_fraction` (furthest-along team's matchday / 38, capped at 1.0), and `days_since_last_match_{home,away}` (`NaN` at a team's first appearance that season). Resets across seasons via `season_of`.
+- `src/matchodds/features/pipeline.py`: `default_accumulators()` now returns all five families — `(EloAccumulator(), FormAccumulator(), HeadToHeadAccumulator(), StrengthAccumulator(), SeasonAccumulator())`.
+- `tests/unit/test_season.py`: 6 tests — first-appearance matchday-1 / NaN-rest, matchday increment + rest days, season reset, the fraction formula (furthest-along team) + cap-at-1.0, pipeline integration (Alpha's matchday 1→2→3 then reset at the season-two opener, 35-day rest pinned), append-future leakage.
 
-**Acceptance criteria.**
-- Matchday counters increment per team within a season and **reset to 1** at the season boundary.
-- `days_since_last_match_*` matches the synthetic dates; `NaN` on the season's first appearance.
-- **Leakage:** append-future invariance holds for all `season_*` columns.
+**Decisions / deviations (recorded).**
+- **`season_fraction` = `max(home_matchday, away_matchday) / 38`, capped at 1.0.** The spec didn't fix which matchday drives the fraction; using the furthest-along of the two teams gives a single well-defined progress signal (the two are usually within ±1 in real fixtures). The `38` is a cross-league approximation that the cap absorbs.
+- No new settings or allowlist changes; `date` is consumed (`season_of` + rest days), so no `_date`.
 
-**Gate.** `make check` → PASS; `make test` → all green.
+**Verification.** `make check` → PASS (mypy strict on 17 files, vulture clean); `make test` → **64 passed** (58 prior + 6 season). ✅
 
 ---
 
