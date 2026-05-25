@@ -14,7 +14,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 2    | `cv.py` — time-ordered (forward-chaining) CV splitter                    | ✅ Done        | `e2de41b` |
 | 3    | `base.py` model interface + `baselines.py` bookmaker-implied baseline    | ✅ Done        | `86ba5a9` |
 | 4    | `logistic.py` — multinomial logistic regression (impute + scale)         | ✅ Done        | `3a6af05` |
-| 5    | `xgboost_model.py` — gradient-boosted trees (native NaN)                 | ⬜ Not started | —      |
+| 5    | `xgboost_model.py` — gradient-boosted trees (native NaN)                 | ✅ Done        | `52f70d8` |
 | 6    | Carry full-time goals into the feature table (generative-model target)   | ⬜ Not started | —      |
 | 7    | `dixon_coles.py` — bivariate-Poisson goals model (MLE)                   | ⬜ Not started | —      |
 | 8    | `calibration.py` — Platt/isotonic calibration of the discriminative models | ⬜ Not started | —      |
@@ -110,18 +110,18 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 5 — `modeling/xgboost_model.py`: gradient-boosted trees
+## Task 5 — `modeling/xgboost_model.py`: gradient-boosted trees — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/modeling/xgboost_model.py` (new): `XGBoostModel` over `XGBClassifier(objective="multi:softprob", num_class=3, random_state=settings.random_seed, n_jobs=1, …)`; selects feature columns; **native NaN** handling (no imputer); `predict_proba` → `[H, D, A]`.
-- `tests/unit/test_xgboost_model.py` (new).
-- `.vulture_allowlist.py`: add `XGBoostModel`.
+**Outcome.**
+- `src/matchodds/modeling/xgboost_model.py`: `XGBoostModel(base.OutcomeModel)` over `XGBClassifier(objective="multi:softprob", n_estimators=200, max_depth=3, learning_rate=0.1, n_jobs=1, random_state=settings.random_seed)`. No imputer — `NaN` cold-start features go straight to the booster (native default-direction handling); `predict_proba` uses the same `classes_`-scatter to a full `(n, 3)` `[H, D, A]` array as the logistic model.
+- `tests/unit/test_xgboost_model.py`: 3 tests — `(n, 3)` shape + rows sum to 1 + non-negative; NaN features accepted natively (no NaN out); exact determinism across two seeded fits.
+- `.vulture_allowlist.py`: added `xgboost_model.XGBoostModel`.
 
-**Acceptance criteria.**
-- Fits on synthetic; shape `(n, 3)`; rows sum to 1; order `[H, D, A]`; NaN inputs accepted natively.
-- Deterministic with the seed (single-threaded so scores are stable).
+**Decisions / deviations (recorded).**
+- **No explicit `num_class=3`** — `XGBClassifier` derives the class count from the labels at fit time and manages it internally; passing `num_class` conflicts with the sklearn wrapper. Class alignment is handled by the `classes_`-scatter, so it stays robust to a fold missing an outcome.
+- **Fixed hyperparameters in code** (`n_estimators=200`, `max_depth=3`, `learning_rate=0.1`) — a small, seeded set per Decision 11; any real tuning is a notebook concern, not this epic's.
 
-**Gate.** `make check` → PASS; `make test` → all green.
+**Verification.** `make check` → PASS (mypy strict on 23 files, vulture clean); `make test` → **97 passed** (94 prior + 3 XGBoost). ✅
 
 ---
 
