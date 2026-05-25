@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     elo_k: float = 20.0
     elo_home_advantage: float = 65.0
 
+    # Modeling (Epic 04): number of forward-chaining temporal CV folds.
+    cv_splits: int = 5
+
     # Data scope.
     leagues: tuple[str, ...] = _DEFAULT_LEAGUES
     seasons_back: int = 10

@@ -10,7 +10,7 @@ from matchodds.config import Settings, settings
 from matchodds.data import sources, teams
 from matchodds.data.schema import Match
 from matchodds.features import pipeline
-from matchodds.modeling import metrics
+from matchodds.modeling import cv, metrics
 
 __metadata__.__repository__
 
@@ -60,3 +60,9 @@ metrics.encode_labels
 metrics.decode_labels
 metrics.reliability_curve
 metrics.score_summary
+
+# modeling.cv — temporal CV splitter consumed by tests now; by calibration.py (Task 8) and
+# train.py (Task 9) later. The split/get_n_splits methods exist for the scikit-learn cv protocol.
+cv.TimeOrderedSplit
+cv.TimeOrderedSplit.split
+cv.TimeOrderedSplit.get_n_splits
