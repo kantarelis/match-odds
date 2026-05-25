@@ -19,7 +19,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 7    | `dixon_coles.py` — bivariate-Poisson goals model (MLE)                   | ✅ Done        | `683d159` |
 | 8    | `calibration.py` — Platt/isotonic calibration of the discriminative models | ✅ Done        | `a320d7b` |
 | 9    | `train.py` — temporal-CV bake-off, freeze `v1.joblib` + metadata; `make train` + `make repro` | ✅ Done        | `b274486` |
-| 10   | `02_modeling.ipynb` — narrative + 4-way comparison + reliability diagrams; wire nb gates | ✅ Done        | `<task-10>` |
+| 10   | `02_modeling.ipynb` — narrative + 4-way comparison + reliability diagrams; wire nb gates | ✅ Done        | `5ea5d91` |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
 
