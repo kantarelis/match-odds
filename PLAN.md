@@ -12,7 +12,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 |------|--------------------------------------------------------------------------|----------------|--------|
 | 1    | `metrics.py` — proper scoring (log-loss, Brier) + accuracy + reliability helper, `[H,D,A]` convention | ✅ Done        | `c7fcd31` |
 | 2    | `cv.py` — time-ordered (forward-chaining) CV splitter                    | ✅ Done        | `e2de41b` |
-| 3    | `base.py` model interface + `baselines.py` bookmaker-implied baseline    | ⬜ Not started | —      |
+| 3    | `base.py` model interface + `baselines.py` bookmaker-implied baseline    | ✅ Done        | `86ba5a9` |
 | 4    | `logistic.py` — multinomial logistic regression (impute + scale)         | ⬜ Not started | —      |
 | 5    | `xgboost_model.py` — gradient-boosted trees (native NaN)                 | ⬜ Not started | —      |
 | 6    | Carry full-time goals into the feature table (generative-model target)   | ⬜ Not started | —      |
@@ -75,20 +75,21 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 3 — `modeling/base.py` interface + `modeling/baselines.py` bookmaker baseline
+## Task 3 — `modeling/base.py` interface + `modeling/baselines.py` bookmaker baseline — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/modeling/base.py` (new): `OutcomeModel` `Protocol` — `fit(table) -> OutcomeModel` and `predict_proba(table) -> ndarray (n, 3)` in `[H, D, A]`; the shared `feature_columns()` convention (derived from `pipeline.default_accumulators()`'s feature names) used by the discriminative models.
-- `src/matchodds/modeling/baselines.py` (new): `BookmakerBaseline` — turns `odds_home/draw/away` into implied probabilities and removes the overround (normalise `1/odds`) → `[H, D, A]`; `fit` is a no-op (stateless). Documented benchmark-only (needs odds → not deployable).
-- `tests/unit/test_baselines.py` (new).
-- `.vulture_allowlist.py`: add `OutcomeModel`, `BookmakerBaseline`.
+**Outcome.**
+- `src/matchodds/modeling/base.py`: the `OutcomeModel` `Protocol` (`fit(table) -> OutcomeModel`, `predict_proba(table) -> (n, 3)` in `[H, D, A]`; positional-only args, docstring + `...` stub bodies mirroring `FeatureAccumulator`) and `feature_columns()`, read from the live accumulator set so it tracks the feature table.
+- `src/matchodds/modeling/baselines.py`: `BookmakerBaseline` — `1 / odds` normalised to drop the overround → `[H, D, A]`; stateless `fit` returns `self`; missing odds → all-`NaN` row. Documented benchmark-only (serving carries no odds, so it is never shipped).
+- `tests/unit/test_base.py`: 1 test — `feature_columns()` equals the pipeline features, length 30, one column per family present, identifiers / odds / goals / label excluded.
+- `tests/unit/test_baselines.py`: 4 tests — overround removal to `[3/7, 2/7, 2/7]`, rows sum to 1 in home/draw/away order, no-op `fit` returns self, missing-odds NaN row.
+- `.vulture_allowlist.py`: added `base.OutcomeModel.fit` / `.predict_proba`, `base.feature_columns`, `baselines.BookmakerBaseline` (first src callers land in Tasks 4-5 / 9; `feature_columns` drops in Task 4).
 
-**Acceptance criteria.**
-- Implied probs sum to 1 per row, overround removed, matching a hand-computed example; shape `(n, 3)`, order `[H, D, A]`.
-- Missing-odds rows have documented behaviour (NaN row or raise — pick one and test it).
-- `BookmakerBaseline` structurally satisfies `OutcomeModel` (mypy strict).
+**Decisions / deviations (recorded).**
+- **`BookmakerBaseline` explicitly subclasses the `OutcomeModel` Protocol** rather than conforming only structurally — this makes mypy strict verify conformance now (the acceptance criterion) and sets a readable `class XModel(OutcomeModel)` convention for Tasks 4-7. Differs from the feature-accumulator structural pattern.
+- **Added `tests/unit/test_base.py`** (the spec listed only `test_baselines.py`) — the natural home for the `base` module's `feature_columns` test.
+- **Missing-odds → all-`NaN` row** (the documented + tested choice of the two the spec offered).
 
-**Gate.** `make check` → PASS; `make test` → all green.
+**Verification.** `make check` → PASS (mypy strict on 21 files, vulture clean); `make test` → **91 passed** (86 prior + 5: 1 base + 4 baselines). ✅
 
 ---
 
