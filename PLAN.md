@@ -16,7 +16,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 4    | `logistic.py` — multinomial logistic regression (impute + scale)         | ✅ Done        | `3a6af05` |
 | 5    | `xgboost_model.py` — gradient-boosted trees (native NaN)                 | ✅ Done        | `52f70d8` |
 | 6    | Carry full-time goals into the feature table (generative-model target)   | ✅ Done        | `90bc06b` |
-| 7    | `dixon_coles.py` — bivariate-Poisson goals model (MLE)                   | ⬜ Not started | —      |
+| 7    | `dixon_coles.py` — bivariate-Poisson goals model (MLE)                   | ✅ Done        | `683d159` |
 | 8    | `calibration.py` — Platt/isotonic calibration of the discriminative models | ⬜ Not started | —      |
 | 9    | `train.py` — temporal-CV bake-off, freeze `v1.joblib` + metadata; `make train` + `make repro` | ⬜ Not started | —      |
 | 10   | `02_modeling.ipynb` — narrative + 4-way comparison + reliability diagrams; wire nb gates | ⬜ Not started | —      |
@@ -141,20 +141,23 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 7 — `modeling/dixon_coles.py`: bivariate-Poisson goals model
+## Task 7 — `modeling/dixon_coles.py`: bivariate-Poisson goals model — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/modeling/dixon_coles.py` (new): `DixonColesModel` — per-league MLE fit (`scipy.optimize.minimize`) of per-team attack/defense, a home-advantage term, and the Dixon-Coles low-score (τ) correction; optional exponential time-decay (`settings.dc_half_life_days`). `predict_proba` builds the score matrix to `settings.dc_max_goals` and sums to `[H, D, A]`. Reads goals (Task 6) at fit, identifiers (+date) at predict; unknown team → league-average strength fallback.
-- `src/matchodds/config.py`: add `dc_max_goals: int = 10` and `dc_half_life_days: int | None = None`.
-- `requirements.txt`: add `scipy` (currently transitive; DC makes it a direct runtime dep).
-- `tests/unit/test_dixon_coles.py` (new).
-- `.vulture_allowlist.py`: add `DixonColesModel` + the new config fields.
+**Outcome.**
+- `src/matchodds/modeling/dixon_coles.py`: `DixonColesModel(base.OutcomeModel)` — per-league MLE (`scipy.optimize.minimize`, L-BFGS-B) of per-team attack/defense, a home-advantage term, and the low-score (τ/ρ) correction, with optional exponential time-decay (`dc_half_life_days`). `predict_proba` builds the Poisson score matrix to `dc_max_goals`, applies the τ correction to the four dependent cells, then sums the lower-triangle / diagonal / upper-triangle to a normalised `[H, D, A]` row. Reads goals at fit, identifiers only at predict. The private `_LeagueFit` dataclass holds a league's params + the averages used for fallback; `_tau` / `_poisson_pmf` / `_fit_league` / `_outcome_probabilities` are the module-level numeric helpers.
+- `src/matchodds/config.py`: added `dc_max_goals: int = 10` and `dc_half_life_days: int | None = None` (consumed by `dixon_coles.py` → no allowlist entry, per the Task-2 convention).
+- `pyproject.toml`: added `scipy.*` to the mypy `ignore_missing_imports` override (scipy ships no `py.typed` — the CLAUDE.md option-2 path, same as sklearn/xgboost).
+- `requirements.txt`: `scipy>=1.13,<2` promoted from transitive to a direct runtime dep (the service may ship DC).
+- `tests/unit/test_dixon_coles.py`: 5 tests — shape/sum-to-one on the real feature table; attack **and** defense ordering recovered on a hand-built hierarchy league; `[H, D, A]` order via predictions (strong-at-home → home win, strong-away → away win); unseen-team **and** unseen-league fallback without error; deterministic refit (`assert_array_equal`).
+- `.vulture_allowlist.py`: added `dixon_coles.DixonColesModel` (test-only consumer until `train.py`, Task 9).
 
-**Acceptance criteria.**
-- On a synthetic league with a clearly stronger team, fitted attack/defense recover the ordering; `predict_proba` shape `(n, 3)`, rows sum to 1, order `[H, D, A]`.
-- Deterministic (fixed optimiser init/seed); fits well under the test timeout; unknown team falls back without error.
+**Decisions / deviations (recorded).**
+- **Config fields not added to the allowlist** (the spec said to). They are read in `dixon_coles.py`, so they have a real `src` consumer — the Task-2 `cv_splits` precedent (consumed in `src` → no entry). Only `DixonColesModel` needed one.
+- **Two-sided fallback** beyond the spec's "unknown team": an unseen *team* falls back to its league's average strength, an unseen *league* to the global average across fitted leagues (`_global_fallback`), initialised to a neutral team so even a pre-`fit` predict can't error. Both are tested.
+- **Attack ridge pinned by post-fit re-centring.** Adding `c` to every attack and subtracting it from every defense leaves the rates (and predictions) unchanged — a one-dimensional ridge. Rather than constrain the optimiser, attack is re-centred to mean 0 after the fit; predictions are invariant, parameters stay interpretable, and the league-average fallback becomes a true neutral team. Determinism comes from a fixed zero/`HOME_ADV_INIT` start (no RNG), so `random_seed` is unused here.
+- **τ-positivity guarded numerically:** ρ bounded to `±0.99` in the optimiser and τ clipped to `1e-10` before the log, so the 0-0 cell can't drive the likelihood to `NaN`; the corrected score-matrix cells are clipped to `≥0` before summing.
 
-**Gate.** `make check` → PASS; `make test` → all green.
+**Verification.** `make check` → PASS (mypy strict on 24 files, vulture clean); `make test` → **103 passed** (98 prior + 5 Dixon-Coles). ✅
 
 ---
 
