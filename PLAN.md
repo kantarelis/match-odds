@@ -17,7 +17,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 5    | `xgboost_model.py` — gradient-boosted trees (native NaN)                 | ✅ Done        | `52f70d8` |
 | 6    | Carry full-time goals into the feature table (generative-model target)   | ✅ Done        | `90bc06b` |
 | 7    | `dixon_coles.py` — bivariate-Poisson goals model (MLE)                   | ✅ Done        | `683d159` |
-| 8    | `calibration.py` — Platt/isotonic calibration of the discriminative models | ⬜ Not started | —      |
+| 8    | `calibration.py` — Platt/isotonic calibration of the discriminative models | ✅ Done        | `a320d7b` |
 | 9    | `train.py` — temporal-CV bake-off, freeze `v1.joblib` + metadata; `make train` + `make repro` | ⬜ Not started | —      |
 | 10   | `02_modeling.ipynb` — narrative + 4-way comparison + reliability diagrams; wire nb gates | ⬜ Not started | —      |
 
@@ -161,18 +161,22 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 8 — `modeling/calibration.py`: calibrate the discriminative models
+## Task 8 — `modeling/calibration.py`: calibrate the discriminative models — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/modeling/calibration.py` (new): `calibrate(model, table, *, method, cv)` wrapping a discriminative `OutcomeModel`'s underlying sklearn estimator with `CalibratedClassifierCV` over the **temporal** folds from `cv.py`, returning a calibrated `OutcomeModel` that preserves `[H, D, A]`; choose `method ∈ {sigmoid, isotonic}` by CV log-loss. Dixon-Coles passes through unchanged (reliability-checked, not wrapped).
-- `tests/unit/test_calibration.py` (new).
-- `.vulture_allowlist.py`: add `calibrate`.
+**Outcome.**
+- `src/matchodds/modeling/calibration.py`: `calibrate(model, table, *, method="auto", cv)` clones the discriminative model's underlying sklearn estimator, wraps it in `CalibratedClassifierCV` over the **temporal** folds from `cv.py`, and returns a calibrated `OutcomeModel` (`_CalibratedModel`) preserving `[H, D, A]` via the same `classes_`-scatter as the wrapped models. `method="auto"` picks sigmoid vs isotonic by **nested** temporal CV (`_select_method`): the inner calibration split is rebuilt from each outer training fold's own dates, so both levels stay forward-chaining. A `Discriminative` `Protocol` types the `estimator` handle so mypy verifies conformance without reaching into privates.
+- `src/matchodds/modeling/logistic.py` + `xgboost_model.py`: added a one-line read-only `estimator` property exposing the underlying sklearn estimator (the calibration handle).
+- `tests/unit/test_calibration.py`: 5 tests — calibrated LR and XGB output valid `(n, 3)` grids summing to 1; the shipped object wraps a `CalibratedClassifierCV` fit with our `TimeOrderedSplit` (never a random KFold); `auto` selects one of the two methods; deterministic across two calibrations.
+- `.vulture_allowlist.py`: added `calibration.calibrate` + `calibration._CalibratedModel.method` (test-only consumers until `train.py`, Task 9). The `estimator` property has a real `src` consumer (calibration.py) → no entry.
 
-**Acceptance criteria.**
-- Calibrated LR/XGB still output `(n, 3)` summing to 1; calibration uses only temporally-held-out folds.
-- Calibrated CV log-loss ≤ uncalibrated on the synthetic set — or, if the fixture is too small to show improvement, assert the wrapper is applied + shape/seed determinism (document which).
+**Decisions / deviations (recorded).**
+- **Method-selection = "auto" inside `calibrate`** (chosen at review over deferring to Task 9). Selection runs both methods through nested temporal CV and picks the lower mean held-out log-loss.
+- **Auto-selection hardened for small folds** (beyond the spec). `CalibratedClassifierCV` requires ≥ `n_splits` examples *per class*, which tiny inner folds violate (it raised on the synthetic). `_inner_cv` now caps the inner `n_splits` by the rarest class's count **and** the distinct-date count, skips any outer fold whose training slice can't form a valid inner split, and falls back to sigmoid if none are usable.
+- **`estimator` property added to two model files** outside Task 8's stated scope (chosen at review over isinstance-dispatching into privates) — the clean public handle calibration wraps.
+- **`_CalibratedModel.fit` is a no-op returning self** — `calibrate` clones + fits via CV, so the returned object is already fitted; `fit` exists only for `OutcomeModel` conformance (mirrors `BookmakerBaseline`).
+- **Tests assert mechanics, not improvement** — the acceptance criterion's documented escape hatch, since the synthetic fixture is too small for calibration to lower log-loss.
 
-**Gate.** `make check` → PASS; `make test` → all green.
+**Verification.** `make check` → PASS (mypy strict on 25 files, vulture clean); `make test` → **108 passed** (103 prior + 5 calibration). ✅
 
 ---
 
