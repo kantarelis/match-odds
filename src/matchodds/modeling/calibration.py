@@ -43,6 +43,12 @@ class Discriminative(Protocol):
         ...
 
 
+class CalibratedOutcome(base.OutcomeModel, Protocol):
+    """An :class:`OutcomeModel` that also records which calibration method it applied."""
+
+    method: str
+
+
 def _features(table: pd.DataFrame) -> base.FloatArray:
     return np.asarray(table[base.feature_columns()].to_numpy(), dtype=np.float64)
 
@@ -62,11 +68,13 @@ def _fit_calibrated(estimator: object, table: pd.DataFrame, method: str, cv: Tim
     return calibrated
 
 
-def _inner_cv(table: pd.DataFrame) -> TimeOrderedSplit | None:
-    """A temporal calibration split rebuilt from a training fold, or ``None`` if it is too small.
+def safe_calibration_cv(table: pd.DataFrame) -> TimeOrderedSplit | None:
+    """A temporal calibration split valid for ``table``, or ``None`` if it is too small.
 
     Capped by the rarest class's count (``CalibratedClassifierCV`` requires at least ``n_splits``
-    examples per class) and by the number of distinct dates; a fold missing a class yields ``None``.
+    examples per class) and by the number of distinct dates; a table missing a class yields ``None``.
+    Used both for the inner split of method selection and (by ``train.py``) for the per-fold and final
+    calibration folds, so a cold-start slice never over-requests folds.
     """
     labels = metrics.encode_labels(table["result"])
     min_class = int(np.bincount(labels, minlength=len(metrics.CLASSES)).min())
@@ -79,7 +87,7 @@ def _select_method(estimator: object, table: pd.DataFrame, cv: TimeOrderedSplit)
     scores: dict[str, list[float]] = {method: [] for method in _METHODS}
     for train_idx, test_idx in cv.split():
         train_table = table.iloc[train_idx]
-        inner = _inner_cv(train_table)
+        inner = safe_calibration_cv(train_table)
         if inner is None:
             continue
         test_table = table.iloc[test_idx]
@@ -113,7 +121,7 @@ def calibrate(
     *,
     method: str = "auto",
     cv: TimeOrderedSplit,
-) -> base.OutcomeModel:
+) -> CalibratedOutcome:
     """Calibrate a discriminative model over temporal folds; return a calibrated ``OutcomeModel``.
 
     ``method`` is ``"sigmoid"``, ``"isotonic"``, or ``"auto"`` (choose by held-out log-loss). The

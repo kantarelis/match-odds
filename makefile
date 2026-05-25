@@ -103,9 +103,8 @@ data:
 features:
 	$(PY) -m matchodds.features.pipeline
 train:
-	@echo "make train — not implemented until Epic 04 (modelling)."
-repro:
-	@echo "make repro — not implemented until Epic 04 (data -> features -> train)."
+	$(PY) -m matchodds.modeling.train
+repro: data features train
 serve:
 	@echo "make serve — not implemented until Epic 05 (FastAPI service)."
 up:

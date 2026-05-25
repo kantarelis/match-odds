@@ -1,0 +1,143 @@
+{
+  "created_at": "2026-05-25T20:33:40.118627+00:00",
+  "random_seed": 42,
+  "cv_splits": 5,
+  "data_version": {
+    "matches": {
+      "built_at": "2026-05-25T20:33:12.492914+00:00",
+      "rows": 20294,
+      "leagues": {
+        "English Premier League": 3790,
+        "Spanish La Liga": 3790,
+        "Italian Serie A": 3790,
+        "French Ligue 1": 3476,
+        "German Bundesliga": 3060,
+        "Greek Super League": 2388
+      },
+      "date_range": [
+        "2016-08-12",
+        "2026-05-21"
+      ],
+      "source_manifest": "raw/_manifest.json"
+    },
+    "features": {
+      "built_at": "2026-05-25T20:33:13.574670+00:00",
+      "rows": 20294,
+      "leagues": {
+        "English Premier League": 3790,
+        "Spanish La Liga": 3790,
+        "Italian Serie A": 3790,
+        "French Ligue 1": 3476,
+        "German Bundesliga": 3060,
+        "Greek Super League": 2388
+      },
+      "features": [
+        "elo_home",
+        "elo_away",
+        "elo_diff",
+        "form_home_ppg",
+        "form_home_gf",
+        "form_home_ga",
+        "form_home_n",
+        "form_away_ppg",
+        "form_away_gf",
+        "form_away_ga",
+        "form_away_n",
+        "h2h_matches",
+        "h2h_home_wins",
+        "h2h_draws",
+        "h2h_away_wins",
+        "h2h_home_goals_avg",
+        "h2h_away_goals_avg",
+        "strength_home_ppg",
+        "strength_home_gf",
+        "strength_home_ga",
+        "strength_home_n",
+        "strength_away_ppg",
+        "strength_away_gf",
+        "strength_away_ga",
+        "strength_away_n",
+        "season_home_matchday",
+        "season_away_matchday",
+        "season_fraction",
+        "days_since_last_match_home",
+        "days_since_last_match_away"
+      ],
+      "params": {
+        "elo_base": 1500.0,
+        "elo_k": 20.0,
+        "elo_home_advantage": 65.0,
+        "rolling_window_n": 5
+      },
+      "source": "matches.meta.json"
+    }
+  },
+  "selected_model": "logistic",
+  "calibration_method": "sigmoid",
+  "feature_columns": [
+    "elo_home",
+    "elo_away",
+    "elo_diff",
+    "form_home_ppg",
+    "form_home_gf",
+    "form_home_ga",
+    "form_home_n",
+    "form_away_ppg",
+    "form_away_gf",
+    "form_away_ga",
+    "form_away_n",
+    "h2h_matches",
+    "h2h_home_wins",
+    "h2h_draws",
+    "h2h_away_wins",
+    "h2h_home_goals_avg",
+    "h2h_away_goals_avg",
+    "strength_home_ppg",
+    "strength_home_gf",
+    "strength_home_ga",
+    "strength_home_n",
+    "strength_away_ppg",
+    "strength_away_gf",
+    "strength_away_ga",
+    "strength_away_n",
+    "season_home_matchday",
+    "season_away_matchday",
+    "season_fraction",
+    "days_since_last_match_home",
+    "days_since_last_match_away"
+  ],
+  "models": {
+    "baseline": {
+      "log_loss": 0.9632936739372756,
+      "brier": 0.5721178870454107,
+      "accuracy": 0.538248858868237,
+      "deployable": false
+    },
+    "logistic": {
+      "log_loss": 0.998872903588145,
+      "brier": 0.5954404782932763,
+      "accuracy": 0.516338541227362,
+      "deployable": true
+    },
+    "xgboost": {
+      "log_loss": 0.9997101550520819,
+      "brier": 0.5965220374259476,
+      "accuracy": 0.5195355183614911,
+      "deployable": true
+    },
+    "dixon_coles": {
+      "log_loss": 1.0024728089775181,
+      "brier": 0.5981923485598309,
+      "accuracy": 0.5066452691130332,
+      "deployable": true
+    }
+  },
+  "library_versions": {
+    "numpy": "2.4.6",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.8.0",
+    "scipy": "1.17.1",
+    "xgboost": "2.1.4",
+    "joblib": "1.5.3"
+  }
+}

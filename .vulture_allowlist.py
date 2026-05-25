@@ -10,7 +10,7 @@ from matchodds.config import Settings, settings
 from matchodds.data import sources, teams
 from matchodds.data.schema import Match
 from matchodds.features import pipeline
-from matchodds.modeling import baselines, calibration, cv, dixon_coles, logistic, metrics, xgboost_model
+from matchodds.modeling import cv, metrics
 
 __metadata__.__repository__
 
@@ -53,28 +53,12 @@ teams.normalize
 # via pipeline.build / `make features`.)
 pipeline.features
 
-# modeling.metrics — scoring + reliability helpers consumed by tests now; by train.py (Task 9) and
-# the modeling notebook (Task 10) later. (log_loss/brier_score/accuracy already have a src consumer
-# via score_summary.)
-metrics.encode_labels
+# modeling.metrics — decode_labels + reliability_curve are consumed by tests now and by the modeling
+# notebook (Task 10) later. (encode_labels / score_summary / log_loss / brier_score / accuracy now have
+# real src consumers via train.py + calibration.py.)
 metrics.decode_labels
 metrics.reliability_curve
-metrics.score_summary
 
-# modeling.cv — temporal CV splitter consumed by tests now; by calibration.py (Task 8) and
-# train.py (Task 9) later. The split/get_n_splits methods exist for the scikit-learn cv protocol.
-cv.TimeOrderedSplit
-cv.TimeOrderedSplit.split
+# modeling.cv — get_n_splits exists only for the scikit-learn cv protocol (called by sklearn at
+# runtime, never by our src). TimeOrderedSplit + split now have real consumers in train.py / calibration.
 cv.TimeOrderedSplit.get_n_splits
-
-# modeling.baselines / logistic / xgboost_model — models consumed by train.py (Task 9).
-# (feature_columns and the OutcomeModel fit / predict_proba names already have real src consumers.)
-baselines.BookmakerBaseline
-logistic.LogisticModel
-xgboost_model.XGBoostModel
-dixon_coles.DixonColesModel
-
-# modeling.calibration — calibrate() consumed by train.py (Task 9); the chosen method is recorded in
-# the model object and read back by train.py's metadata sidecar.
-calibration.calibrate
-calibration._CalibratedModel.method

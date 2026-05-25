@@ -121,6 +121,9 @@ def _fit_league(
 
 def _outcome_probabilities(lam: float, mu: float, rho: float, max_goals: int) -> list[float]:
     """``[home_win, draw, away_win]`` summed from the corrected score matrix, normalised to 1."""
+    # Cap the rates at the grid size: a degenerate fit on a tiny fold can push a rate so high that the
+    # truncated (0..max_goals) Poisson mass underflows to all-zeros. Real rates (~1-3) are never capped.
+    lam, mu = min(lam, float(max_goals)), min(mu, float(max_goals))
     goals = np.arange(max_goals + 1, dtype=np.intp)
     matrix = np.outer(_poisson_pmf(goals, lam), _poisson_pmf(goals, mu))
     matrix[0, 0] *= 1.0 - lam * mu * rho
