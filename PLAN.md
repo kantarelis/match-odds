@@ -15,7 +15,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 3    | `base.py` model interface + `baselines.py` bookmaker-implied baseline    | ✅ Done        | `86ba5a9` |
 | 4    | `logistic.py` — multinomial logistic regression (impute + scale)         | ✅ Done        | `3a6af05` |
 | 5    | `xgboost_model.py` — gradient-boosted trees (native NaN)                 | ✅ Done        | `52f70d8` |
-| 6    | Carry full-time goals into the feature table (generative-model target)   | ⬜ Not started | —      |
+| 6    | Carry full-time goals into the feature table (generative-model target)   | ✅ Done        | `90bc06b` |
 | 7    | `dixon_coles.py` — bivariate-Poisson goals model (MLE)                   | ⬜ Not started | —      |
 | 8    | `calibration.py` — Platt/isotonic calibration of the discriminative models | ⬜ Not started | —      |
 | 9    | `train.py` — temporal-CV bake-off, freeze `v1.joblib` + metadata; `make train` + `make repro` | ⬜ Not started | —      |
@@ -125,18 +125,19 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 6 — Carry full-time goals into the feature table (generative-model target)
+## Task 6 — Carry full-time goals into the feature table (generative-model target) — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/features/pipeline.py`: carry `ft_home_goals` / `ft_away_goals` through `build_feature_table` as **label-side passthrough** columns (alongside `result`), mirroring the odds passthrough. They are the generative model's targets — **never** read as features. `features()` (serving) is unchanged (no goals at request time).
-- `docs/feature-pipeline.md`: add the two columns to the schema table with a note that they are generative-model targets, not features.
-- `tests/unit/test_features_table.py`: update the column-order assertion; assert the goals carry the right values and are absent from `default_accumulators()` feature names.
+**Outcome.**
+- `src/matchodds/features/pipeline.py`: added `_GOALS = ["ft_home_goals", "ft_away_goals"]`, populated from the typed `MatchRow` in each `build_feature_table` row, between odds and label — column order is now `identifiers → features → odds → ft_home_goals → ft_away_goals → result`. `features()` (serving) is untouched (no goals at request time). Module docstring updated.
+- `docs/feature-pipeline.md`: schema intro now reads `… → odds passthrough → goals passthrough → label`; added a Goals row to the schema table and a paragraph explaining goals are a generative-model target, never a feature, and absent from `features()`.
+- `tests/unit/test_features_table.py`: updated the column-order assertion; new `test_full_time_goals_pass_through_on_the_label_side` (goals excluded from the features, values match the source in chronological order).
+- `tests/unit/test_pipeline.py`: updated the no-accumulator driver's column assertion to include the goal columns.
 
-**Acceptance criteria.**
-- Feature-table column order becomes `identifiers → features → odds → ft_home_goals → ft_away_goals → result`, one row per match, goals matching the source.
-- No feature name collides with the goal columns; all existing leakage + train/serve-equivalence guards stay green.
+**Decisions / deviations (recorded).**
+- Goal values come from the typed `MatchRow` (`match.ft_home_goals`), not `record.get(...)` — already parsed to `int`, mirroring how the label uses `match.result`.
+- Also had to update **`test_pipeline.py`**'s no-accumulator column assertion (the spec only named `test_features_table.py`) — an expected consequence of the schema change, caught by the gate.
 
-**Gate.** `make check` → PASS; `make test` → all green (this reopens Epic-03 pipeline code by design — flagged in Decision 7).
+**Verification.** `make check` → PASS (mypy strict on 23 files, vulture clean); `make test` → **98 passed** (97 prior + 1 goals passthrough); real-data `make features` → **20,294 rows, 40 columns** with the goals on the label side. ✅
 
 ---
 
