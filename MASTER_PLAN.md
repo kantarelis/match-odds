@@ -15,7 +15,7 @@ See [`CLAUDE.md`](CLAUDE.md) → *Development Methodology* for the full Epic →
 |----|----------------------------------------------|------------|----------------|---------------------|--------------|
 | 01 | Repo Scaffold, Tooling & CI Skeleton         | 2.1        | ✅ Done        | `implement-scaffold-tooling-and-ci-skeleton` | `e84115d..f793d2f` |
 | 02 | Data Acquisition & Cleaning                  | 2.2        | ✅ Done        | `implement-data-acquisition-and-cleansing` | `f1fe3d3..fdd6359` |
-| 03 | Feature Pipeline (leakage-free)              | 2.3        | ⬜ Not started | `epic-03-features`  | —            |
+| 03 | Feature Pipeline (leakage-free)              | 2.3        | ✅ Done        | `implement-feature-pipeline` | `ca7d022..<close-out>` |
 | 04 | Modeling, Evaluation & Calibration           | 2.4, 2.5   | ⬜ Not started | `epic-04-modeling`  | —            |
 | 05 | FastAPI Inference Service (Dockerised)       | 2.6        | ⬜ Not started | `epic-05-serving`   | —            |
 | 06 | Streamlit Demo App                           | —          | ⬜ Not started | `epic-06-demo`      | —            |

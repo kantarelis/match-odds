@@ -101,7 +101,7 @@ coverage-badge:
 data:
 	$(PY) -m matchodds.data.matches
 features:
-	@echo "make features — not implemented until Epic 03 (feature pipeline)."
+	$(PY) -m matchodds.features.pipeline
 train:
 	@echo "make train — not implemented until Epic 04 (modelling)."
 repro:

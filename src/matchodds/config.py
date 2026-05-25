@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     # Feature pipeline (Epic 03): rolling-form window, in matches per team.
     rolling_window_n: int = 5
 
+    # Elo (Epic 03): starting rating, K-factor, and home-advantage bonus (rating points).
+    elo_base: float = 1500.0
+    elo_k: float = 20.0
+    elo_home_advantage: float = 65.0
+
     # Data scope.
     leagues: tuple[str, ...] = _DEFAULT_LEAGUES
     seasons_back: int = 10

@@ -7,15 +7,15 @@ line-level suppression. Remove entries as their real consumers land in later epi
 
 from matchodds import __metadata__
 from matchodds.config import Settings, settings
-from matchodds.data import matches, sources, teams
+from matchodds.data import sources, teams
 from matchodds.data.schema import Match
+from matchodds.features import pipeline
 
 __metadata__.__repository__
 
 # config.Settings fields/properties are read by later epics (data, features, modelling, serving).
 Settings.model_config
 settings.random_seed
-settings.rolling_window_n
 settings.leagues
 settings.seasons_back
 settings.football_data_base_url
@@ -47,5 +47,7 @@ sources.load_raw
 # data.teams — normalize() consumed by the matches builder (Task 5).
 teams.normalize
 
-# data.matches — load() consumed by notebooks / the feature pipeline (Epic 03).
-matches.load
+# features.pipeline.features — the point-in-time serving entrypoint; consumed by tests now and by
+# the serving layer (Epic 05). (build_feature_table and matches.load now have real src consumers
+# via pipeline.build / `make features`.)
+pipeline.features
