@@ -31,9 +31,11 @@ jobs:
       - name: Notebook lint
         run: make nb-lint
 
-      - name: Data notebook smoke (offline sample)
+      - name: Notebook smoke (offline sample)
         env:
           MATCHODDS_DATA_DIR: ${{ github.workspace }}/tests/fixtures/sample
+        # Build the master table from the committed sample season, then execute every notebook
+        # headless (01_data + 02_modeling, which builds its features + runs the bake-off in-process).
         run: |
           .venv/bin/python -c "from matchodds.data import matches; matches.build()"
           make nb-run

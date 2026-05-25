@@ -69,17 +69,26 @@ def _fit_calibrated(estimator: object, table: pd.DataFrame, method: str, cv: Tim
 
 
 def safe_calibration_cv(table: pd.DataFrame) -> TimeOrderedSplit | None:
-    """A temporal calibration split valid for ``table``, or ``None`` if it is too small.
+    """A temporal calibration split valid for ``table``, or ``None`` if it is too small / skewed.
 
     Capped by the rarest class's count (``CalibratedClassifierCV`` requires at least ``n_splits``
-    examples per class) and by the number of distinct dates; a table missing a class yields ``None``.
-    Used both for the inner split of method selection and (by ``train.py``) for the per-fold and final
-    calibration folds, so a cold-start slice never over-requests folds.
+    examples per class) and by the number of distinct dates. Then every fold's **training** portion
+    must contain all classes — an expanding-window fold whose early dates miss an outcome would fit a
+    single-class base estimator and raise — so a too-skewed slice yields ``None``. Used for the inner
+    split of method selection and (by ``train.py``) for the per-fold / final calibration folds, so a
+    cold-start or class-skewed slice falls back to the raw estimator rather than crashing.
     """
     labels = metrics.encode_labels(table["result"])
-    min_class = int(np.bincount(labels, minlength=len(metrics.CLASSES)).min())
-    n_splits = min(settings.cv_splits, int(table["date"].nunique()) - 1, min_class)
-    return TimeOrderedSplit(table["date"], n_splits=n_splits) if n_splits >= 2 else None
+    n_classes = len(metrics.CLASSES)
+    n_splits = min(
+        settings.cv_splits, int(table["date"].nunique()) - 1, int(np.bincount(labels, minlength=n_classes).min())
+    )
+    if n_splits < 2:
+        return None
+    splitter = TimeOrderedSplit(table["date"], n_splits=n_splits)
+    if any(len(np.unique(labels[train_idx])) < n_classes for train_idx, _ in splitter.split()):
+        return None
+    return splitter
 
 
 def _select_method(estimator: object, table: pd.DataFrame, cv: TimeOrderedSplit) -> str:
