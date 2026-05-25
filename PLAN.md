@@ -13,7 +13,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 1    | `metrics.py` — proper scoring (log-loss, Brier) + accuracy + reliability helper, `[H,D,A]` convention | ✅ Done        | `c7fcd31` |
 | 2    | `cv.py` — time-ordered (forward-chaining) CV splitter                    | ✅ Done        | `e2de41b` |
 | 3    | `base.py` model interface + `baselines.py` bookmaker-implied baseline    | ✅ Done        | `86ba5a9` |
-| 4    | `logistic.py` — multinomial logistic regression (impute + scale)         | ⬜ Not started | —      |
+| 4    | `logistic.py` — multinomial logistic regression (impute + scale)         | ✅ Done        | `3a6af05` |
 | 5    | `xgboost_model.py` — gradient-boosted trees (native NaN)                 | ⬜ Not started | —      |
 | 6    | Carry full-time goals into the feature table (generative-model target)   | ⬜ Not started | —      |
 | 7    | `dixon_coles.py` — bivariate-Poisson goals model (MLE)                   | ⬜ Not started | —      |
@@ -93,19 +93,20 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 4 — `modeling/logistic.py`: multinomial logistic regression
+## Task 4 — `modeling/logistic.py`: multinomial logistic regression — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/modeling/logistic.py` (new): `LogisticModel` wrapping a sklearn `Pipeline` = `SimpleImputer(strategy="median")` → `StandardScaler` → `LogisticRegression(multinomial, random_state=settings.random_seed, …)`. `fit` selects the feature columns + encodes labels; `predict_proba` returns `[H, D, A]` aligned to the encoder. Precise return types for mypy strict.
-- `tests/unit/test_logistic.py` (new).
-- `.vulture_allowlist.py`: add `LogisticModel`.
+**Outcome.**
+- `src/matchodds/modeling/logistic.py`: `LogisticModel(base.OutcomeModel)` wrapping a sklearn `Pipeline` = `SimpleImputer(strategy="median", keep_empty_features=True)` → `StandardScaler` → `LogisticRegression(max_iter=1000, random_state=settings.random_seed)`. `fit` selects `feature_columns()` + encodes the label; `predict_proba` scatters the fitted `classes_` back into a full `(n, 3)` `[H, D, A]` array (a fold missing an outcome still returns three columns).
+- `pyproject.toml`: added `sklearn.*` to the mypy `ignore_missing_imports` override.
+- `tests/unit/test_logistic.py`: 3 tests — `(n, 3)` shape + rows sum to 1 + non-negative; NaN cold-start rows imputed (no error, no NaN out); deterministic across two seeded fits.
+- `.vulture_allowlist.py`: added `logistic.LogisticModel`; removed the now-consumed `base.*` entries (and the `base` import) — `logistic.py` calls `feature_columns()` and accesses `.fit` / `.predict_proba`.
 
-**Acceptance criteria.**
-- Fits on the synthetic feature table; `predict_proba` shape `(n, 3)`, rows sum to 1, order `[H, D, A]`.
-- NaN cold-start rows are imputed (no error).
-- Deterministic: two fits with the same seed give identical probabilities.
+**Decisions / deviations (recorded).**
+- **Added `sklearn.*` to mypy `ignore_missing_imports`** — scikit-learn 1.8.0 ships no `py.typed`, so strict mypy cannot import it. The CLAUDE.md-sanctioned option-2 (project-wide config) path for a stub-less library.
+- **No `multi_class="multinomial"` argument** — sklearn 1.8 *removed* that parameter; the default lbfgs solver already fits multinomial for multiclass targets, so multinomial behaviour comes from the default (the plan's intent) rather than the removed arg.
+- **`SimpleImputer(keep_empty_features=True)`** beyond the spec — keeps an all-NaN column (a possible early-fold cold start in Task 9's CV) so the column layout stays fixed.
 
-**Gate.** `make check` → PASS; `make test` → all green.
+**Verification.** `make check` → PASS (mypy strict on 22 files, vulture clean); `make test` → **94 passed** (91 prior + 3 logistic). ✅
 
 ---
 
