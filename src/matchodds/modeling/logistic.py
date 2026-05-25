@@ -34,6 +34,11 @@ class LogisticModel(base.OutcomeModel):
             ]
         )
 
+    @property
+    def estimator(self) -> Pipeline:
+        """The underlying scikit-learn pipeline, exposed for calibration (see modeling.calibration)."""
+        return self._pipeline
+
     def fit(self, table: pd.DataFrame, /) -> LogisticModel:
         features = np.asarray(table[base.feature_columns()].to_numpy(), dtype=np.float64)
         labels = metrics.encode_labels(table["result"])

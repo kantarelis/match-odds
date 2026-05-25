@@ -32,6 +32,11 @@ class XGBoostModel(base.OutcomeModel):
             random_state=settings.random_seed,
         )
 
+    @property
+    def estimator(self) -> XGBClassifier:
+        """The underlying XGBoost classifier, exposed for calibration (see modeling.calibration)."""
+        return self._model
+
     def fit(self, table: pd.DataFrame, /) -> XGBoostModel:
         features = np.asarray(table[base.feature_columns()].to_numpy(), dtype=np.float64)
         labels = metrics.encode_labels(table["result"])
