@@ -10,7 +10,7 @@ from matchodds.config import Settings, settings
 from matchodds.data import sources, teams
 from matchodds.data.schema import Match
 from matchodds.features import pipeline
-from matchodds.modeling import baselines, cv, logistic, metrics, xgboost_model
+from matchodds.modeling import baselines, cv, dixon_coles, logistic, metrics, xgboost_model
 
 __metadata__.__repository__
 
@@ -72,3 +72,4 @@ cv.TimeOrderedSplit.get_n_splits
 baselines.BookmakerBaseline
 logistic.LogisticModel
 xgboost_model.XGBoostModel
+dixon_coles.DixonColesModel

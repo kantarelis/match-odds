@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     # Modeling (Epic 04): number of forward-chaining temporal CV folds.
     cv_splits: int = 5
 
+    # Dixon-Coles (Epic 04): goals summed per side when reading 1X2 off the score matrix, and the
+    # optional exponential time-decay half-life in days (``None`` disables recency weighting).
+    dc_max_goals: int = 10
+    dc_half_life_days: int | None = None
+
     # Data scope.
     leagues: tuple[str, ...] = _DEFAULT_LEAGUES
     seasons_back: int = 10

@@ -4,6 +4,9 @@ pandas>=2.2,<3
 numpy>=1.26,<3
 scikit-learn>=1.5,<2
 xgboost>=2.1,<3
+# scipy backs the Dixon-Coles MLE (scipy.optimize / scipy.special); the service may ship that model,
+# so it is a direct runtime dep (previously transitive via scikit-learn).
+scipy>=1.13,<2
 joblib>=1.4,<2
 pyarrow>=24,<25
 # Validation & config (Epic 02+): Pydantic owns API schemas, the typed Settings, and the
