@@ -40,7 +40,7 @@ show_error_codes = true
 
 # Stub-less ML libs imported from Epic 04 onward; declared now so they don't trip strict mypy later.
 [[tool.mypy.overrides]]
-module = ["xgboost.*", "statsmodels.*", "streamlit.*", "lightgbm.*"]
+module = ["sklearn.*", "xgboost.*", "statsmodels.*", "streamlit.*", "lightgbm.*"]
 ignore_missing_imports = true
 
 [tool.bandit]

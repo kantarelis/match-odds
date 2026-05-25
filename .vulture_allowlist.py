@@ -10,7 +10,7 @@ from matchodds.config import Settings, settings
 from matchodds.data import sources, teams
 from matchodds.data.schema import Match
 from matchodds.features import pipeline
-from matchodds.modeling import base, baselines, cv, metrics
+from matchodds.modeling import baselines, cv, logistic, metrics
 
 __metadata__.__repository__
 
@@ -67,10 +67,7 @@ cv.TimeOrderedSplit
 cv.TimeOrderedSplit.split
 cv.TimeOrderedSplit.get_n_splits
 
-# modeling.base / baselines — the model interface + the bookmaker benchmark. fit / predict_proba get
-# their first src callers in the discriminative models (Tasks 4-5) and train.py (Task 9);
-# feature_columns is consumed by the discriminative models (Task 4).
-base.OutcomeModel.fit
-base.OutcomeModel.predict_proba
-base.feature_columns
+# modeling.baselines / logistic — models consumed by train.py (Task 9). (base.feature_columns and
+# the OutcomeModel fit / predict_proba names now have real src consumers via logistic.py.)
 baselines.BookmakerBaseline
+logistic.LogisticModel
