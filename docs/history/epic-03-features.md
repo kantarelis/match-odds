@@ -8,16 +8,16 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ## Progress
 
-| Task | Description                                                          | Status         | Commit |
-|------|----------------------------------------------------------------------|----------------|--------|
-| 1    | Pipeline scaffold — accumulator contract, chronological driver, leakage harness, `season_of` | ✅ Done        | —      |
-| 2    | `elo.py` — pre-match Elo snapshot                                    | ✅ Done        | —      |
-| 3    | `form.py` — rolling last-N form                                     | ✅ Done        | —      |
-| 4    | `head_to_head.py` — pairwise H2H history                            | ✅ Done        | —      |
-| 5    | `strength.py` — home/away venue strength (season-scoped)            | ✅ Done        | —      |
-| 6    | `season.py` — season-progress features                              | ✅ Done        | —      |
-| 7    | Materialize: `make features`, `features.parquet` + meta, end-to-end leakage + train/serve-equivalence tests | ✅ Done        | —      |
-| 8    | `docs/feature-pipeline.md` — every feature + its pre-match snapshot  | ⬜ Not started | —      |
+| Task | Description                                                          | Status         | Commit    |
+|------|----------------------------------------------------------------------|----------------|-----------|
+| 1    | Pipeline scaffold — accumulator contract, chronological driver, leakage harness, `season_of` | ✅ Done        | `9f4a0c2` |
+| 2    | `elo.py` — pre-match Elo snapshot                                    | ✅ Done        | `bcfd878` |
+| 3    | `form.py` — rolling last-N form                                     | ✅ Done        | `d91c278` |
+| 4    | `head_to_head.py` — pairwise H2H history                            | ✅ Done        | `1148518` |
+| 5    | `strength.py` — home/away venue strength (season-scoped)            | ✅ Done        | `d126e26` |
+| 6    | `season.py` — season-progress features                              | ✅ Done        | `59d9f93` |
+| 7    | Materialize: `make features`, `features.parquet` + meta, end-to-end leakage + train/serve-equivalence tests | ✅ Done        | `0f422dd` |
+| 8    | `docs/feature-pipeline.md` — every feature + its pre-match snapshot  | ✅ Done        | —         |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
 
@@ -156,17 +156,15 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 8 — `docs/feature-pipeline.md`: every feature + its pre-match snapshot
+## Task 8 — `docs/feature-pipeline.md`: every feature + its pre-match snapshot — ✅ Done
 
-**Scope (files to touch).**
-- `docs/feature-pipeline.md` (new): the contract and the single-pass design (snapshot-before-update); a table of every feature column with the exact pre-match snapshot it reads, its cold-start value, and the config param it depends on; the train/serve-shared code path; and how each leakage guard enforces the contract. Satisfies CLAUDE.md's rule that *every* feature documents which pre-match snapshot it reads.
+**Outcome.**
+- `docs/feature-pipeline.md`: the feature-pipeline contract document — the leakage contract (strictly-earlier dates, same-day exclusion, cold-start policy); the single-pass, day-batched, snapshot-before-update design; the two shared entrypoints (`build_feature_table` / `features(date_cutoff)`) and the no-skew guarantee; the full table schema (identifiers → features → odds passthrough → label); a per-column reference for all 30 features across Elo / form / H2H / strength / season (each with its pre-match snapshot, cold-start value, and config dependency); the layered leakage guards; and how to reproduce via `make features`.
 
-**Acceptance criteria.**
-- Every column produced by `build_feature_table` appears in the doc with its snapshot + cold-start behavior.
-- The leakage contract and the train/serve-equivalence guarantee are described.
-- Docs-only commit — no code changes.
+**Decisions / deviations (recorded).**
+- Docs-only; no code changed. Satisfies CLAUDE.md's rule that *every* feature documents which pre-match snapshot it reads.
 
-**Gate.** `make check` → PASS; `make test` → all green (unchanged).
+**Verification.** `make check` → PASS; `make test` → **68 passed** (unchanged). ✅
 
 ---
 
