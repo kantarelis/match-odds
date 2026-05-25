@@ -10,6 +10,7 @@ from matchodds.config import Settings, settings
 from matchodds.data import sources, teams
 from matchodds.data.schema import Match
 from matchodds.features import pipeline
+from matchodds.modeling import metrics
 
 __metadata__.__repository__
 
@@ -51,3 +52,11 @@ teams.normalize
 # the serving layer (Epic 05). (build_feature_table and matches.load now have real src consumers
 # via pipeline.build / `make features`.)
 pipeline.features
+
+# modeling.metrics — scoring + reliability helpers consumed by tests now; by train.py (Task 9) and
+# the modeling notebook (Task 10) later. (log_loss/brier_score/accuracy already have a src consumer
+# via score_summary.)
+metrics.encode_labels
+metrics.decode_labels
+metrics.reliability_curve
+metrics.score_summary
