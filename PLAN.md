@@ -10,8 +10,8 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 | Task | Description                                                              | Status         | Commit |
 |------|--------------------------------------------------------------------------|----------------|--------|
-| 1    | `metrics.py` — proper scoring (log-loss, Brier) + accuracy + reliability helper, `[H,D,A]` convention | ⬜ Not started | —      |
-| 2    | `cv.py` — time-ordered (forward-chaining) CV splitter                    | ⬜ Not started | —      |
+| 1    | `metrics.py` — proper scoring (log-loss, Brier) + accuracy + reliability helper, `[H,D,A]` convention | ✅ Done        | `c7fcd31` |
+| 2    | `cv.py` — time-ordered (forward-chaining) CV splitter                    | ✅ Done        | `e2de41b` |
 | 3    | `base.py` model interface + `baselines.py` bookmaker-implied baseline    | ⬜ Not started | —      |
 | 4    | `logistic.py` — multinomial logistic regression (impute + scale)         | ⬜ Not started | —      |
 | 5    | `xgboost_model.py` — gradient-boosted trees (native NaN)                 | ⬜ Not started | —      |
@@ -45,36 +45,33 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 1 — `modeling/metrics.py`: proper scoring rules + reliability helper
+## Task 1 — `modeling/metrics.py`: proper scoring rules + reliability helper — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/modeling/metrics.py` (new): the fixed `CLASSES = ("H", "D", "A")` order and a `result` ↔ index encoder; `log_loss`, `brier_score` (multiclass), and `accuracy` over `(y_true_idx, proba)`; `reliability_curve(proba, y_true, *, n_bins)` returning per-bin mean-predicted vs. observed-frequency arrays for the diagrams; a `score_summary(proba, y_true) -> dict` bundling the three headline metrics.
-- `tests/unit/test_metrics.py` (new).
-- `.vulture_allowlist.py`: add the new public symbols (consumed by tests now, by `train.py`/the notebook later; removed in Task 9).
+**Outcome.**
+- `src/matchodds/modeling/metrics.py`: the fixed `CLASSES = ("H", "D", "A")` order + `encode_labels` / `decode_labels`; the proper scoring rules `log_loss` (clipped cross-entropy on the true-class probability) and `brier_score` (multiclass mean squared error, range `[0, 2]`); `accuracy` (argmax); `score_summary` bundling the three; and `reliability_curve` returning per-bin `(mean_predicted, observed_frequency, count)`. Private `_as_proba` / `_as_labels` coerce inputs and validate the `(n, 3)` shape. Pure, no RNG.
+- `tests/unit/test_metrics.py`: 10 tests — `[H,D,A]` order + label round-trip, hand-computed log-loss / Brier, perfect-prediction zeros, confident-miss-stays-finite, argmax accuracy, summary keys, deterministic binning, empty-bin `NaN`, and `(n, 3)` shape rejection.
+- `.vulture_allowlist.py`: added `metrics.{encode_labels, decode_labels, reliability_curve, score_summary}` (`log_loss` / `brier_score` / `accuracy` need no entry — `score_summary` consumes them in `src`).
 
-**Acceptance criteria.**
-- log-loss and Brier match hand-computed values on a tiny pinned example; perfect predictions → 0; the encoder round-trips and the class order is exactly `[H, D, A]` everywhere.
-- `reliability_curve` bins a deterministic example correctly.
-- Pure functions, no RNG.
+**Decisions / deviations (recorded).**
+- **`reliability_curve` is a pooled one-vs-rest curve** — the full `(n, 3)` matrix flattened, each class-probability paired with its one-hot outcome, then binned into one calibration curve over all class-probabilities (what the Task 10 reliability diagrams want).
+- Added defensive shape validation (`_as_proba` raises on a non-`(n, 3)` matrix) beyond the spec — documents the contract; tested.
 
-**Gate.** `make check` → PASS; `make test` → all green (+ new metrics tests).
+**Verification.** `make check` → PASS (mypy strict on 18 files, vulture clean); `make test` → **78 passed** (68 prior + 10 metrics). ✅
 
 ---
 
-## Task 2 — `modeling/cv.py`: time-ordered cross-validation splitter
+## Task 2 — `modeling/cv.py`: time-ordered cross-validation splitter — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/modeling/cv.py` (new): a forward-chaining / expanding-window splitter yielding `(train_idx, test_idx)` over a **date-sorted** frame; each test fold is contiguous and strictly later than all its training rows, split on **date boundaries** so a day is never divided across train/test. Usable both directly and as a `cv` argument to scikit-learn's `CalibratedClassifierCV` (Task 8). A guard raises if the input isn't sorted by `date`.
-- `src/matchodds/config.py`: add `cv_splits: int = 5`.
-- `tests/unit/test_cv.py` (new).
-- `.vulture_allowlist.py`: add the splitter (+ `cv_splits` if not yet read in `src`).
+**Outcome.**
+- `src/matchodds/modeling/cv.py`: `TimeOrderedSplit` — forward-chaining / expanding-window temporal CV. It partitions the distinct dates into `n_splits + 1` contiguous groups (the first train-only, each later one a test fold), cutting with `searchsorted(side="right")` on each group's last date so a day is never split across the boundary and every test fold lies on strictly later dates than its training rows. Constructed *with* the dates, so an instance doubles as a scikit-learn `cv` object (`split` / `get_n_splits` ignore their args).
+- `src/matchodds/config.py`: added `cv_splits: int = 5` (consumed by `cv.py` → no allowlist entry).
+- `tests/unit/test_cv.py`: 8 tests — strict temporal order + expanding window, day-never-split, unsorted-input raises, too-few-dates raises, `n_splits >= 2`, default-from-settings, determinism + reusable `split()`, and the real synthetic-fixture dates.
+- `.vulture_allowlist.py`: added `cv.TimeOrderedSplit` + its `split` / `get_n_splits` (test-only consumers until Tasks 8/9).
 
-**Acceptance criteria.**
-- For every fold `max(train.date) < min(test.date)` — strictly temporal, no leakage; folds cover the tail of the data and are deterministic given `n_splits`.
-- A day is never split across the train/test boundary; unsorted input raises.
-- No `sklearn.KFold`/`StratifiedKFold` on match rows anywhere.
+**Decisions / deviations (recorded).**
+- None structural. The **construct-with-dates** design (a `PredefinedSplit`-style splitter) is what lets the instance be passed straight to `CalibratedClassifierCV(cv=...)` in Task 8; the scikit-learn protocol args (`_x` / `_y` / `_groups`) are `_`-prefixed so vulture ignores them (the elo-task pattern). Dates are normalised via `pd.to_datetime`, so a `date` column loads cleanly whether parquet yields `Timestamp` or python `date`.
 
-**Gate.** `make check` → PASS; `make test` → all green.
+**Verification.** `make check` → PASS (mypy strict on 19 files, vulture clean); `make test` → **86 passed** (78 prior + 8 CV). ✅
 
 ---
 
