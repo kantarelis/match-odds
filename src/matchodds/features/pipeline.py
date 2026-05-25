@@ -2,7 +2,8 @@
 
 :func:`build_feature_table` walks the master matches table in date order and, for every match,
 records the accumulators' **pre-match** snapshot (computed only from strictly-earlier matches)
-alongside the identifiers, the label, and the bookmaker odds. :func:`features` is the point-in-time
+alongside the identifiers, the label, the bookmaker odds, and the full-time goals (a generative-model
+target, never a feature). :func:`features` is the point-in-time
 entrypoint used at serving time: it replays history before a cutoff, then snapshots upcoming
 fixtures with the *same* accumulators — so training and serving share one code path (no skew).
 
@@ -35,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 _IDENTIFIERS = ["league", "date", "home", "away"]
 _ODDS = ["odds_home", "odds_draw", "odds_away"]
+_GOALS = ["ft_home_goals", "ft_away_goals"]
 _LABEL = "result"
 _SORT_KEYS = ["date", "league", "home", "away"]
 
@@ -109,6 +111,8 @@ def build_feature_table(
                     "odds_home": record.get("odds_home"),
                     "odds_draw": record.get("odds_draw"),
                     "odds_away": record.get("odds_away"),
+                    "ft_home_goals": match.ft_home_goals,
+                    "ft_away_goals": match.ft_away_goals,
                     _LABEL: match.result,
                 }
             )
@@ -116,7 +120,7 @@ def build_feature_table(
         for played_match in played:
             for acc in accs:
                 acc.update(played_match)
-    columns = _IDENTIFIERS + _feature_columns(accs) + _ODDS + [_LABEL]
+    columns = _IDENTIFIERS + _feature_columns(accs) + _ODDS + _GOALS + [_LABEL]
     return pd.DataFrame(rows, columns=columns)
 
 
