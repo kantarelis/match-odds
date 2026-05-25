@@ -18,7 +18,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 6    | Carry full-time goals into the feature table (generative-model target)   | ✅ Done        | `90bc06b` |
 | 7    | `dixon_coles.py` — bivariate-Poisson goals model (MLE)                   | ✅ Done        | `683d159` |
 | 8    | `calibration.py` — Platt/isotonic calibration of the discriminative models | ✅ Done        | `a320d7b` |
-| 9    | `train.py` — temporal-CV bake-off, freeze `v1.joblib` + metadata; `make train` + `make repro` | ⬜ Not started | —      |
+| 9    | `train.py` — temporal-CV bake-off, freeze `v1.joblib` + metadata; `make train` + `make repro` | ✅ Done        | `b274486` |
 | 10   | `02_modeling.ipynb` — narrative + 4-way comparison + reliability diagrams; wire nb gates | ⬜ Not started | —      |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
@@ -180,21 +180,25 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 9 — `modeling/train.py`: bake-off, select, freeze artifact; `make train` + `make repro`
+## Task 9 — `modeling/train.py`: bake-off, select, freeze artifact; `make train` + `make repro` — ✅ Done
 
-**Scope (files to touch).**
-- `src/matchodds/modeling/train.py` (new): load the feature table; run baseline + LR + XGBoost + Dixon-Coles through `cv.py`; compute `metrics.score_summary` per model per fold → mean; calibrate the discriminative models; select the best **deployable** model by mean CV log-loss; refit it (calibrated) on all data; `joblib.dump` → `models/v1.joblib`; write `models/v1.metadata.json` (data version, seed, per-model CV scores, selected model + calibration method, feature columns, library versions). `main()` + `__main__`.
-- `makefile`: `train` → `python -m matchodds.modeling.train`; `repro` → `data` → `features` → `train`.
-- `.vulture_allowlist.py`: **remove** the entries now consumed by `train.py` (metrics, cv, base, baselines, the three models, calibration).
-- `tests/unit/test_train.py` (new): on a `tmp_path` models dir + synthetic feature table — artifact written + reloadable, the loaded object's `predict_proba` sums to 1; metadata has the required keys; selection prefers lower log-loss and never picks the baseline; identical metadata metrics across two runs.
+**Outcome.**
+- `src/matchodds/modeling/train.py`: a `_Candidate` registry (name, factory, `deployable`, `calibrated`) drives the bake-off. `run(table, models_dir)` scores every candidate under one `TimeOrderedSplit` via `_cv_scores` (mean per-fold `score_summary`), selects the min-mean-CV-log-loss **deployable** model (`_BY_NAME` lookup), refits it on all data (`_fit_final`), `joblib.dump`s it to `models/v1.joblib`, and writes `models/v1.metadata.json`. Discriminative models are evaluated in their calibrated, deployable form (`_fit_for_eval` → `_fit_calibrated`, with a raw-estimator fallback when a cold-start fold is too small to calibrate). `_load_features` + `main()` + `__main__` wire the real-data path; metadata carries seed, cv_splits, data version (`_data_version` from the meta sidecars), per-model CV scores + `deployable` flags, selected model, calibration method, feature columns, and `_library_versions`.
+- `src/matchodds/modeling/calibration.py`: renamed `_inner_cv` → public `safe_calibration_cv` (shared by `_select_method` and train.py); added the `CalibratedOutcome` `Protocol` so `calibrate`'s return surfaces the chosen `method` with full typing.
+- `src/matchodds/modeling/dixon_coles.py`: **bugfix** — cap the Poisson rates at `max_goals` in `_outcome_probabilities`, so a degenerate MLE on a tiny CV fold can't underflow the truncated score matrix to all-zeros (a `ZeroDivisionError` train.py's small-fold CV surfaced). Real rates (~1-3) are far below the cap and untouched.
+- `makefile`: `train` → `python -m matchodds.modeling.train`; `repro: data features train`.
+- `pyproject.toml`: added `joblib.*` to the mypy `ignore_missing_imports` override (no `py.typed`).
+- `.vulture_allowlist.py`: removed every entry now consumed by train.py (the three models, baseline, `calibrate`, `_CalibratedModel.method`, `encode_labels`/`score_summary`, `TimeOrderedSplit`/`split`); kept only `metrics.decode_labels`, `metrics.reliability_curve` (Task 10 notebook) and `cv.TimeOrderedSplit.get_n_splits` (sklearn-protocol only).
+- `tests/unit/test_train.py`: 3 tests on a `tmp_path` dir + synthetic table — reloadable artifact whose `predict_proba` sums to 1 + required metadata keys; selection is the lowest-log-loss deployable and never the baseline; identical metadata metrics across two runs.
 
-**Acceptance criteria.**
-- `make train` (real features — manual note) and the unit test both write a loadable `v1.joblib` + valid metadata.
-- Selection is by log-loss; the baseline is scored but never shipped.
-- Reproducibility: two runs on the same data produce identical metadata metrics.
-- `make repro` chains data → features → train.
+**Decisions / deviations (recorded).**
+- **Per-fold calibration uses fixed sigmoid; the final shipped model uses `method="auto"`** (sigmoid vs isotonic chosen by CV log-loss on all data, recorded in metadata). Running auto's nested selection inside every bake-off fold would be triple-nested and slow; sigmoid is the robust per-fold default. (Fills an unspecified detail in the plan — flagged at review.)
+- **`calibration.py` touched outside the stated scope** — exposed `safe_calibration_cv` and added the `CalibratedOutcome` protocol, so train.py builds valid per-fold/final calibration splits and reads the chosen method with static typing (which let `_CalibratedModel.method` leave the allowlist rather than stay).
+- **Dixon-Coles rate cap** is a real latent-bug fix in Task-7 code, surfaced by train.py's small-fold CV (not a train-only concern).
+- **`make train` not executed for real** — it needs `make features` (network + data) first; per the acceptance criterion real `make train` is a manual note, and the unit test covers the logic offline.
+- **`base`/`cv` allowlist:** `base.*` was already removed (Task 4); `cv.get_n_splits` stays (never called by our `src`, only by sklearn at runtime).
 
-**Gate.** `make check` → PASS (vulture clean after the allowlist removals); `make test` → all green.
+**Verification.** `make check` → PASS (mypy strict on 26 files, vulture clean); `make test` → **111 passed** (108 prior + 3 train); `make -n repro` chains data → features → train. ✅
 
 ---
 
