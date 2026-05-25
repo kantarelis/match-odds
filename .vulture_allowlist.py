@@ -10,7 +10,7 @@ from matchodds.config import Settings, settings
 from matchodds.data import sources, teams
 from matchodds.data.schema import Match
 from matchodds.features import pipeline
-from matchodds.modeling import baselines, cv, logistic, metrics
+from matchodds.modeling import baselines, cv, logistic, metrics, xgboost_model
 
 __metadata__.__repository__
 
@@ -67,7 +67,8 @@ cv.TimeOrderedSplit
 cv.TimeOrderedSplit.split
 cv.TimeOrderedSplit.get_n_splits
 
-# modeling.baselines / logistic — models consumed by train.py (Task 9). (base.feature_columns and
-# the OutcomeModel fit / predict_proba names now have real src consumers via logistic.py.)
+# modeling.baselines / logistic / xgboost_model — models consumed by train.py (Task 9).
+# (feature_columns and the OutcomeModel fit / predict_proba names already have real src consumers.)
 baselines.BookmakerBaseline
 logistic.LogisticModel
+xgboost_model.XGBoostModel
