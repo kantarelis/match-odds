@@ -53,19 +53,26 @@ match's date)` for that fixture (`tests/unit/test_features_table.py`).
 ## Feature table schema
 
 `build_feature_table` emits, in order: **identifiers** → **features** → **odds passthrough** →
-**label**.
+**goals passthrough** → **label**.
 
 | Group       | Columns                                              | Notes                                                        |
 |-------------|------------------------------------------------------|--------------------------------------------------------------|
 | Identifiers | `league`, `date`, `home`, `away`                     | Canonical names; `date` is the kickoff date.                 |
 | Features    | the 30 columns documented below                      | All `float`; leakage-free pre-match snapshots.               |
 | Odds        | `odds_home`, `odds_draw`, `odds_away`                | Bookmaker closing odds, **passed through untouched**.        |
+| Goals       | `ft_home_goals`, `ft_away_goals`                     | Full-time score, **passed through** as the Dixon-Coles target — never a feature. |
 | Label       | `result`                                             | `H` / `D` / `A` (home perspective).                          |
 
 **Odds are passthrough, not engineered.** Closing odds are set before kickoff, so they are
 legitimate pre-match information and are carried through for Epic 04's bookmaker baseline and Epic
 07's betting-edge analysis. They are deliberately **not** turned into model features here — keeping
 the model's signal independent of the bookmaker is a modelling decision left to Epic 04.
+
+**Full-time goals pass through as a target, not a feature.** `ft_home_goals` and `ft_away_goals` are
+carried alongside `result` so Epic 04's Dixon-Coles goals model can fit on the score line. Like the
+label, they describe the match *outcome* — no accumulator reads them and no model takes them as an
+input feature. `features()` (the serving entrypoint) does not emit them: at prediction time the score
+is unknown.
 
 ## Feature reference
 

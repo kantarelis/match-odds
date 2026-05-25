@@ -38,8 +38,19 @@ def test_build_emits_one_row_per_match_in_date_order():
     matches = _load()
     table = pipeline.build_feature_table(matches, accumulators=[])
     assert len(table) == len(matches)
-    # Driver with no accumulators: identifiers + odds + label only, label last.
-    assert list(table.columns) == ["league", "date", "home", "away", "odds_home", "odds_draw", "odds_away", "result"]
+    # Driver with no accumulators: identifiers + odds + goals + label only, label last.
+    assert list(table.columns) == [
+        "league",
+        "date",
+        "home",
+        "away",
+        "odds_home",
+        "odds_draw",
+        "odds_away",
+        "ft_home_goals",
+        "ft_away_goals",
+        "result",
+    ]
     dates = list(table["date"])
     assert dates == sorted(dates)
 

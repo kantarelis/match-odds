@@ -23,12 +23,27 @@ def _feature_names() -> list[str]:
 def test_table_column_order_and_one_row_per_match():
     matches = _load()
     table = pipeline.build_feature_table(matches, pipeline.default_accumulators())
-    expected = ["league", "date", "home", "away"] + _feature_names() + ["odds_home", "odds_draw", "odds_away", "result"]
+    expected = (
+        ["league", "date", "home", "away"]
+        + _feature_names()
+        + ["odds_home", "odds_draw", "odds_away", "ft_home_goals", "ft_away_goals", "result"]
+    )
     assert list(table.columns) == expected
     assert len(table) == len(matches)
     # Every feature family is represented.
     for prefix in ("elo_", "form_", "h2h_", "strength_", "season_"):
         assert any(col.startswith(prefix) for col in _feature_names())
+
+
+def test_full_time_goals_pass_through_on_the_label_side():
+    matches = _load()
+    table = pipeline.build_feature_table(matches, pipeline.default_accumulators())
+    # Goals are carried as a target, never an engineered feature.
+    assert "ft_home_goals" not in _feature_names() and "ft_away_goals" not in _feature_names()
+    # ...and their values match the source matches in the table's chronological row order.
+    ordered = matches.sort_values(["date", "league", "home", "away"]).reset_index(drop=True)
+    assert table["ft_home_goals"].tolist() == ordered["ft_home_goals"].tolist()
+    assert table["ft_away_goals"].tolist() == ordered["ft_away_goals"].tolist()
 
 
 def test_future_match_cannot_influence_the_past():

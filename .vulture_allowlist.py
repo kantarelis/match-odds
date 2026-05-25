@@ -10,6 +10,7 @@ from matchodds.config import Settings, settings
 from matchodds.data import sources, teams
 from matchodds.data.schema import Match
 from matchodds.features import pipeline
+from matchodds.modeling import cv, metrics
 
 __metadata__.__repository__
 
@@ -51,3 +52,13 @@ teams.normalize
 # the serving layer (Epic 05). (build_feature_table and matches.load now have real src consumers
 # via pipeline.build / `make features`.)
 pipeline.features
+
+# modeling.metrics — decode_labels + reliability_curve are consumed by tests now and by the modeling
+# notebook (Task 10) later. (encode_labels / score_summary / log_loss / brier_score / accuracy now have
+# real src consumers via train.py + calibration.py.)
+metrics.decode_labels
+metrics.reliability_curve
+
+# modeling.cv — get_n_splits exists only for the scikit-learn cv protocol (called by sklearn at
+# runtime, never by our src). TimeOrderedSplit + split now have real consumers in train.py / calibration.
+cv.TimeOrderedSplit.get_n_splits
