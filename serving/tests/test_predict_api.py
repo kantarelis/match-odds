@@ -1,25 +1,23 @@
 """API tests for ``POST /predict`` — valid fixture, unknown team/league, malformed date — offline.
 
-Points the config singleton at the sample season (PLAN Decision 7) and clears the ``get_inference``
-cache so the app builds inference against the committed sample ``matches.parquet`` + the shipped
-``models/v1.joblib``. No network, no real data.
+The ``sample_data_dir`` fixture (conftest) builds the sample ``matches.parquet`` from the committed
+raw CSV into a tmp data dir and points the config singleton there; the ``get_inference`` cache is
+cleared so the app builds inference against that table + the shipped ``models/v1.joblib``. No
+network, no real data.
 """
 
 import pytest
 from fastapi.testclient import TestClient
 
-from matchodds import config
 from serving.app import inference
 from serving.app.main import create_app
 
-_SAMPLE = config.settings.repo_root / "tests" / "fixtures" / "sample"
 # After every sample match (sample ends 2023-12-09), so the fixture has full pre-match history.
 _MATCH_DATE = "2024-05-01"
 
 
 @pytest.fixture
-def client(monkeypatch):
-    monkeypatch.setattr(config.settings, "data_dir", _SAMPLE)
+def client(sample_data_dir):
     inference.get_inference.cache_clear()
     with TestClient(create_app()) as test_client:
         yield test_client

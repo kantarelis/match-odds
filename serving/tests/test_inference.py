@@ -1,26 +1,23 @@
-"""End-to-end inference tests against the committed artifact + the sample EPL season — offline.
+"""End-to-end inference tests against the shipped artifact + the sample EPL season — offline.
 
-Points the config singleton at ``tests/fixtures/sample`` (PLAN Decision 7) so ``matches.load`` reads
-the committed sample ``matches.parquet``; ``models_dir`` is left untouched so the **shipped**
-``models/v1.joblib`` is exercised. No network, no real data.
+The ``sample_data_dir`` fixture (conftest) builds the sample ``matches.parquet`` from the committed
+raw CSV into a tmp data dir and points the config singleton there; ``models_dir`` is left untouched
+so the **shipped** ``models/v1.joblib`` is exercised. No network, no real data.
 """
 
 import datetime as dt
 
 import pytest
 
-from matchodds import config
 from serving.app.inference import Inference, UnknownFixtureError
 from serving.app.schemas import PredictRequest
 
-_SAMPLE = config.settings.repo_root / "tests" / "fixtures" / "sample"
 # A date after every sample match (sample ends 2023-12-09), so the fixture has full pre-match history.
 _MATCH_DATE = dt.date(2024, 5, 1)
 
 
 @pytest.fixture
-def inference(monkeypatch):
-    monkeypatch.setattr(config.settings, "data_dir", _SAMPLE)
+def inference(sample_data_dir):
     return Inference()
 
 
