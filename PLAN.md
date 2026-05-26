@@ -11,7 +11,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | Task | Description                                                                 | Status         | Commit |
 |------|-----------------------------------------------------------------------------|----------------|--------|
 | 1    | Serving scaffold + deps + gate extension + `schemas.py` (the Pydantic contract) | ✅ Done | `65cf406` |
-| 2    | `inference.py` — load artifact + matches table; reconstruct features → `predict_proba` | ⬜ Not started | —      |
+| 2    | `inference.py` — load artifact + matches table; reconstruct features → `predict_proba` | ✅ Done | `9e4c75c` |
 | 3    | `api/main/` (health/env/metrics) + app factory `main.py` + entrypoint + `make serve` | ⬜ Not started | —      |
 | 4    | `api/predict/` — `POST /predict` (Manager + Views) wired to inference        | ⬜ Not started | —      |
 | 5    | `Dockerfile` + `docker-compose.yml` + `.dockerignore` + `make up` / `make down` | ⬜ Not started | —      |
@@ -63,15 +63,17 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 ## Task 2 — `serving/app/inference.py`: load the artifact + matches, reconstruct features, predict
 
 **Scope (files to touch).**
-- `serving/app/inference.py` (new): an `Inference` class that on construction loads `models/v1.joblib` (`joblib.load` from `settings.models_dir`), reads `v1.metadata.json` (for `feature_columns` / selected model — exposed for `/env` later), and loads the master matches table once (`matchodds.data.matches.load()`). Method `predict(request: PredictRequest) -> OutcomeProbabilities`: validate `league` + `home`/`away` against `settings.leagues` and `matchodds.data.teams.canonical_names(league)` (raise a module-level `UnknownFixtureError` on miss); build a one-row `fixtures` DataFrame `{league, date, home, away}`; call `pipeline.features(self._matches, fixtures, date_cutoff=request.match_date)`; `self._model.predict_proba(row) -> (1, 3)`; map `[H, D, A]` → `OutcomeProbabilities`. A cached accessor (`get_inference()`) constructs it once.
-- `.vulture_allowlist.py`: add `inference`/`UnknownFixtureError`/`get_inference` if no `src` consumer yet (removed as the predict view lands in Task 4).
-- `serving/tests/test_inference.py` (new): a fixture monkeypatches `config.settings.data_dir` → `tests/fixtures/sample` (Decision 7) and constructs `Inference()` against the committed `matches.parquet`; a valid EPL fixture (e.g. `Arsenal` vs `Chelsea`, with a late-2023/24 `match_date` so pre-match history exists in the sample) → probabilities in `[0, 1]` summing to 1.0; unknown team and unknown league each raise `UnknownFixtureError`; deterministic across two calls.
+**Outcome.** `serving/app/inference.py` loads the frozen artifact + matches table once and reconstructs the single feature row through the same `pipeline.features` that built the training table — verified end-to-end on the committed `v1.joblib` + sample EPL season. `make check` → PASS (mypy 32 files); `make test` → 120 passed (4 new). A home/away swap (Arsenal-home `0.31/0.34/0.35` vs Chelsea-home `0.16/0.35/0.49`) confirms the prediction is genuinely feature-driven, not constant.
 
-**Acceptance criteria.**
-- Predict returns a valid `[home_win, draw, away_win]` summing to 1.0 on the sample, using the **committed** `v1.joblib`; unknown team/league raises; offline + deterministic.
-- No train/serve skew: features come from `pipeline.features`, not a re-implementation.
+**What shipped.**
+- **`serving/app/inference.py`:** `Inference` loads `models/v1.joblib` (`joblib.load`), reads `feature_columns` from `v1.metadata.json`, loads the master matches table (`matches.load()`), and runs a **startup no-skew guard** (`_guard_no_skew`) asserting the live `base.feature_columns()` equals the trained artifact's columns. `predict(request) -> OutcomeProbabilities`: validates `league ∈ settings.leagues` and `home`/`away ∈ teams.canonical_names(league)` (raising `UnknownFixtureError`), builds the one-row `fixtures` frame, calls `pipeline.features(self._matches, fixtures, date_cutoff=request.match_date)`, maps `predict_proba(...)[0]` `[H, D, A]` → `OutcomeProbabilities`. `get_inference()` builds the shared instance once (`functools.lru_cache`).
+- **`serving/tests/test_inference.py`:** monkeypatches `config.settings.data_dir` → the sample, leaves `models_dir` untouched (exercises the shipped artifact). Asserts normalized probabilities (`[0, 1]`, sum ≈ 1.0), determinism across two calls, and `UnknownFixtureError` for an unknown team and an unknown league. `match_date = 2024-05-01` (after the sample's last match, 2023-12-09) so the fixture has full pre-match history.
+- **`.vulture_allowlist.py`:** allowlisted `Inference.predict` + `get_inference` (consumed by the Task 4 view); `UnknownFixtureError` needs none (in-module consumer).
 
-**Gate.** `make check` → PASS; `make test` → all green.
+**Deviations (minor, flagged).**
+- **`selected_model` not read.** Plan said read `v1.metadata.json` for "feature_columns / selected model — exposed for /env later." Only `feature_columns` was read, given an **immediate** consumer (the skew guard). `selected_model` was left out because nothing consumes it — the Task-1 `EnvResponse` is `{environment, application_name, version}` with no model field, so storing it would be dead code needing a permanent allowlist entry. **Open question for Task 3:** if `/env` (or a future `/model-info`) should surface the loaded model, add the metadata read + schema field there alongside its consumer.
+- **`_guard_no_skew` added** beyond the literal spec — a fail-fast startup assertion that serving columns still match the trained artifact (on-theme for the repo's no-skew principle); it is also what gives `feature_columns` its consumer.
+- **`UnknownFixtureError(ValueError)`** — plan left the base unspecified; `ValueError` maps cleanly to the HTTP 422 wired in Task 4.
 
 ---
 
