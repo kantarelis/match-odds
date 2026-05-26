@@ -13,7 +13,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 1    | Serving scaffold + deps + gate extension + `schemas.py` (the Pydantic contract) | ✅ Done | `65cf406` |
 | 2    | `inference.py` — load artifact + matches table; reconstruct features → `predict_proba` | ✅ Done | `9e4c75c` |
 | 3    | `api/main/` (health/env/metrics) + app factory `main.py` + entrypoint + `make serve` | ✅ Done | `6805caa` |
-| 4    | `api/predict/` — `POST /predict` (Manager + Views) wired to inference        | ⬜ Not started | —      |
+| 4    | `api/predict/` — `POST /predict` (Manager + Views) wired to inference        | ✅ Done | `3dc2bef` |
 | 5    | `Dockerfile` + `docker-compose.yml` + `.dockerignore` + `make up` / `make down` | ⬜ Not started | —      |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
@@ -102,15 +102,21 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ## Task 4 — `api/predict/`: `POST /predict` (Manager + Views) wired to inference
 
-**Scope (files to touch).**
-- `serving/app/api/predict/main.py` (`PredictManager`, `APIRouter(prefix="/predict")`) + `views.py` (`PredictViews`): the CLAUDE.md-specified manager; `POST ""` → `views.predict(request: PredictRequest) -> OutcomeProbabilities` (sync `def`, threadpool) calling `get_inference().predict(request)` and incrementing `predictions_total`.
-- Map `UnknownFixtureError` → **HTTP 422** with a helpful message (a FastAPI exception handler registered in `main.py`, or caught in the view).
-- `serving/app/main.py`: construct + mount `PredictManager`; register the exception handler.
-- `.vulture_allowlist.py`: remove the Task-2 inference entries now consumed by the view.
-- `serving/tests/test_predict_api.py` (new): `TestClient` (applying the Decision 7 sample-data monkeypatch + `get_inference` cache reset) — valid EPL fixture → 200, body sums to 1.0, order `home_win/draw/away_win`; unknown team → 422 + message; unknown league → 422; malformed `match_date` → 422 (Pydantic); the OpenAPI schema exposes `predict_match`.
+**Outcome.** `POST /predict` is wired to inference in the quake-feed Manager/Views shape; an out-of-scope fixture returns HTTP 422, never a fabricated prediction. `make check` → PASS (mypy 39 files); `make test` → 129 passed (5 new). Verified **live over HTTP**: `POST /predict {Arsenal, Chelsea, EPL, 2024-05-01}` → `{"home_win":0.310,"draw":0.342,"away_win":0.348}` (sum 1.0), unknown team → 422, Swagger `/docs` → 200, `/predict` present in `/openapi.json`.
 
-**Acceptance criteria.**
-- `POST /predict {home, away, league, match_date}` returns calibrated `{home_win, draw, away_win}` summing to 1.0 for a known fixture; unknown fixture → 422; Swagger `/docs` documents the contract.
+**What shipped.**
+- **`serving/app/api/predict/views.py`** (`PredictViews`): a **sync** `def predict(request) -> OutcomeProbabilities` (Decision 11 — CPU-bound feature build + `predict_proba`, so FastAPI threadpools it). Calls `get_inference().predict(request)`, increments `predictions_total` **on success**, debug-logs the fixture. Stays HTTP-agnostic — lets `UnknownFixtureError` propagate.
+- **`serving/app/api/predict/main.py`** (`PredictManager`): `APIRouter(prefix="/predict")`; `run()` wires `POST ""` → `views.predict` with `operation_id="predict_match"`, `Predict` tag — exactly the CLAUDE.md pattern.
+- **`serving/app/main.py`:** mounts `PredictManager`; registers a module-level `_unknown_fixture_handler` via `add_exception_handler(UnknownFixtureError, …)` → `JSONResponse(422, {"detail": str(exc)})`.
+- **`.vulture_allowlist.py`:** removed `Inference.predict`, `get_inference`, `predictions_total` (+ their imports) — all now consumed by the view.
+- **`serving/tests/test_predict_api.py`:** `TestClient` with the Decision 7 sample monkeypatch + `get_inference.cache_clear()`: valid fixture → 200 / order `home_win,draw,away_win` / sum ≈ 1.0; unknown team → 422 + message; unknown league → 422; malformed `match_date` → 422; OpenAPI exposes `predict_match`.
+
+**Deviations (minor, flagged).**
+- **422 via app-level exception handler**, not caught in the view (plan offered both) — keeps the view HTTP-agnostic. The handler is a module-level function (referenced as an `add_exception_handler` arg, so vulture-clean) typed `(_request: Request, exc: Exception)` to satisfy starlette's handler signature.
+- **`_Manager` Protocol added to `main.py`** — a mypy fix: with two distinct manager classes the `self.managers` list inferred as `list[object]`, breaking `.run()`. The Protocol (`run(self) -> APIRouter`) types the list and matches the repo's Protocol idiom. In-scope, but a small structural addition.
+- **`predictions_total.inc()` only on a successful prediction** (422s don't increment).
+
+**Acceptance criteria.** Met — see Outcome.
 
 **Gate.** `make check` → PASS; `make test` → all green.
 
