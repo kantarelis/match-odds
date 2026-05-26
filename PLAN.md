@@ -10,7 +10,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 | Task | Description                                                                 | Status         | Commit |
 |------|-----------------------------------------------------------------------------|----------------|--------|
-| 1    | Serving scaffold + deps + gate extension + `schemas.py` (the Pydantic contract) | ⬜ Not started | —      |
+| 1    | Serving scaffold + deps + gate extension + `schemas.py` (the Pydantic contract) | ✅ Done | `65cf406` |
 | 2    | `inference.py` — load artifact + matches table; reconstruct features → `predict_proba` | ⬜ Not started | —      |
 | 3    | `api/main/` (health/env/metrics) + app factory `main.py` + entrypoint + `make serve` | ⬜ Not started | —      |
 | 4    | `api/predict/` — `POST /predict` (Manager + Views) wired to inference        | ⬜ Not started | —      |
@@ -40,21 +40,23 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 1 — Serving scaffold, deps, gate extension + `schemas.py`
+## Task 1 — Serving scaffold, deps, gate extension + `schemas.py` ✅ `65cf406`
 
-**Scope (files to touch).**
-- `serving/__init__.py`, `serving/app/__init__.py`, `serving/app/api/__init__.py`, `serving/app/api/main/__init__.py`, `serving/app/api/predict/__init__.py`, `serving/tests/__init__.py` — the package skeleton so `serving.app.*` imports cleanly (drop `serving/.gitkeep`).
-- `serving/app/schemas.py` (new): `PredictRequest{home: str, away: str, league: str, match_date: datetime.date}`; `OutcomeProbabilities{home_win: float, draw: float, away_win: float}` (each in `[0, 1]`; docstring notes they sum to ~1.0); `HealthResponse{status, service, version}`; `EnvResponse{environment, application_name, version}`. Pydantic v2.
-- `src/matchodds/config.py`: add `serve_host: str = "127.0.0.1"`, `serve_port: int = 8000`, `environment: str = "local"` to `Settings` (env-overridable, `MATCHODDS_` prefix).
-- `requirements-serving.txt` (new): `-r requirements.txt` + `fastapi`, `uvicorn`, `prometheus-client`. Use **plain `uvicorn`**, not `uvicorn[standard]` — the `[standard]` extra pulls compiled `uvloop`/`httptools`/`websockets` that may lack cp314 wheels (the same reason streamlit is deferred in `requirements-dev.txt`); flag at review to change. `requirements-test.txt`: add `-r requirements-serving.txt` so the test env can import the app + run the TestClient suites (httpx, which `TestClient` needs, is **already** a core dep in `requirements.txt`). `requirements-dev.txt`: add `-r requirements-serving.txt` so `make check` can import fastapi without the test file. (`make install-dev` installs dev + test, so the gate and `make test` both see fastapi/httpx; CI runs the suite under `install-dev`.)
-- **Gate extension — the `makefile` `check` recipe is the source of truth: it passes explicit path args (`mypy src`, `bandit -q -r src`, `vulture src .vulture_allowlist.py`) that *override* the pyproject `files`/`paths` config, so editing pyproject alone does nothing.** Edit the recipe to `mypy src serving/app`, `bandit -q -r src serving/app`, `vulture src serving/app .vulture_allowlist.py`; set `CODE_PATHS += serving` so isort/black/flake8 also cover `serving` (incl. `serving/tests`). Keep `pyproject.toml` `[tool.mypy] files = ["src", "serving/app"]` and `[tool.vulture] paths` in sync for config-driven runs, and add `prometheus_client` to the mypy `ignore_missing_imports` override if it ships no stubs. `pytest.ini` `testpaths` += `serving/tests`. `makefile` adds an `install-serve` target.
-- `serving/tests/test_schemas.py` (new): `PredictRequest` parses an ISO `match_date` and rejects a malformed one (422-style `ValidationError`); `OutcomeProbabilities` round-trips and rejects out-of-range.
+**Outcome.** Stood up the `serving/` package skeleton, the Pydantic contract, and extended the static-analysis gate + pytest to hold serving code to the same bar as `src/`. `make check` → PASS (mypy now covers 31 files incl. `serving/app`); `make test` → 116 passed (5 new in `serving/tests/test_schemas.py`).
 
-**Acceptance criteria.**
-- `make check` now lints/type-checks `serving/app` and stays green; `make test` collects + passes `serving/tests`.
-- `fastapi` / `uvicorn` / `prometheus_client` import under the dev env; schemas validate as specified.
+**What shipped.**
+- **Package skeleton:** `serving/{__init__, app/__init__, app/api/__init__, app/api/main/__init__, app/api/predict/__init__, tests/__init__}.py` (each a one-line docstring); `serving/.gitkeep` deleted.
+- **`serving/app/schemas.py`:** Pydantic v2 `PredictRequest{home, away, league, match_date: date}` (`extra="forbid"`), `OutcomeProbabilities{home_win, draw, away_win}` (each `[0, 1]`), `HealthResponse{status, service, version}`, `EnvResponse{environment, application_name, version}`.
+- **`src/matchodds/config.py`:** added `serve_host="127.0.0.1"`, `serve_port=8000`, `environment="local"` (env-overridable, `MATCHODDS_` prefix).
+- **Deps:** `requirements-serving.txt` (new) = `-r requirements.txt` + `fastapi`, plain `uvicorn`, `prometheus-client`; wired into both `requirements-dev.txt` and `requirements-test.txt`. Verified the file resolves on Python 3.14.5: `fastapi 0.136.3`, `uvicorn 0.48.0`, `prometheus-client 0.25.0` — plain `uvicorn` installed without compiled-wheel trouble, confirming the cp314 decision.
+- **Gate extension:** `makefile` `check` recipe now runs `mypy src serving/app`, `bandit -q -r src serving/app`, `vulture src serving/app .vulture_allowlist.py`; `CODE_PATHS += serving`; new `install-serve` target + help line. `pyproject.toml` mypy `files=["src","serving/app"]`, vulture `paths` += `serving/app`. `pytest.ini` `testpaths = tests serving/tests`. `.vulture_allowlist.py` covers the not-yet-consumed schema classes/fields + the three config fields.
+- **Tests:** `serving/tests/test_schemas.py` — ISO `match_date` parses, malformed rejected, extra fields forbidden, `OutcomeProbabilities` round-trips, out-of-range rejected.
 
-**Gate.** `make check` → PASS (serving in scope); `make test` → all green.
+**Deviations (all minor, within scope).**
+- **httpx already present.** A plan-review claim that `httpx` was absent was wrong — it is already a core dep in `requirements.txt` (the data-acquisition client). So `requirements-test.txt` only gained `-r requirements-serving.txt`; no redundant `httpx`. Plan text corrected.
+- **`extra="forbid"` on `PredictRequest`** (mirrors the `Match` ingestion model) + an extra-fields rejection test, beyond the literal test list.
+- **`prometheus_client` not added** to mypy's `ignore_missing_imports`: it ships `py.typed` and isn't imported until Task 3, so the "if it ships no stubs" condition didn't apply.
+- `install-serve` installs `-e .` + `requirements-serving.txt` (mirrors `install` / `install-dev`).
 
 ---
 
