@@ -17,7 +17,7 @@ See [`CLAUDE.md`](CLAUDE.md) → *Development Methodology* for the full Epic →
 | 02 | Data Acquisition & Cleaning                  | 2.2        | ✅ Done        | `implement-data-acquisition-and-cleansing` | `f1fe3d3..fdd6359` |
 | 03 | Feature Pipeline (leakage-free)              | 2.3        | ✅ Done        | `implement-feature-pipeline` | `ca7d022..<close-out>` |
 | 04 | Modeling, Evaluation & Calibration           | 2.4, 2.5   | ✅ Done        | `implement-modeling-evaluation-and-calibration` | `bf99c19..5ea5d91` |
-| 05 | FastAPI Inference Service (Dockerised)       | 2.6        | 🔄 In progress | `implement-fastapi-inference-service` | —            |
+| 05 | FastAPI Inference Service (Dockerised)       | 2.6        | ✅ Done        | `implement-fastapi-inference-service` | `d298224..<close-out>` |
 | 06 | Streamlit Demo App                           | —          | ⬜ Not started | `epic-06-demo`      | —            |
 | 07 | Betting-Edge Analysis (optional appendix)    | 2.7        | ⬜ Not started | `epic-07-betting`   | —            |
 | 08 | Documentation, Model Card & Reproducibility  | 2.8, 2.9   | ⬜ Not started | `epic-08-docs`      | —            |

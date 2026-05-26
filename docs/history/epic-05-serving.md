@@ -14,7 +14,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 2    | `inference.py` — load artifact + matches table; reconstruct features → `predict_proba` | ✅ Done | `9e4c75c` |
 | 3    | `api/main/` (health/env/metrics) + app factory `main.py` + entrypoint + `make serve` | ✅ Done | `6805caa` |
 | 4    | `api/predict/` — `POST /predict` (Manager + Views) wired to inference        | ✅ Done | `3dc2bef` |
-| 5    | `Dockerfile` + `docker-compose.yml` + `.dockerignore` + `make up` / `make down` | ⬜ Not started | —      |
+| 5    | `Dockerfile` + `docker-compose.yml` + `.dockerignore` + `make up` / `make down` | ✅ Done | `41945d2` |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
 
@@ -122,20 +122,23 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 5 — `Dockerfile` + `docker-compose.yml` + `.dockerignore` + `make up` / `make down`
+## Task 5 — `Dockerfile` + `docker-compose.yml` + `.dockerignore` + `make up` / `make down` ✅ `41945d2`
 
-**Scope (files to touch).**
-- `serving/Dockerfile` (new): `python:3.14-slim`; install `requirements-serving.txt`; `COPY` `src/`, `serving/`, `models/v1.*`, `pyproject.toml`; non-root user; `CMD` launches uvicorn (`python -m serving.app`). Layer the requirements copy first for cache reuse.
-- `docker-compose.yml` (root, new): one `serving` service building the image, `ports: "${MATCHODDS_SERVE_PORT}:8000"`, `env_file`/env for `MATCHODDS_*`, and a read-only volume `./data:/app/data:ro` (the matches table — Decision 2).
-- `.dockerignore` (new): exclude `data/`, `.venv`, `notebooks/`, `tests/`, `serving/tests/`, `.git`, caches, `htmlcov/`.
-- `makefile`: `up` → `docker compose up -d --build`; `down` → `docker compose down`. Keep `demo` a stub (Epic 06).
-- `README.md` / `.env.template`: note `make data` (matches table) is a prerequisite for `make up`; document the port env.
+**Outcome.** Dockerised the service: `make up` builds the image and runs it locally; `make down` tears it down. `make check` → PASS; `make test` → 129 passed (unchanged — no Python surface added). **Manual Docker verification:** `make up` built `match-odds-serving:latest` (1.39 GB) and started the container; over HTTP — `/health` ok, `/env` → `environment: docker`, `POST /predict {Arsenal, Chelsea, EPL}` against the **real mounted** matches table → `{"home_win":0.447,"draw":0.269,"away_win":0.284}` (sum 1.0), unknown team → 422, Swagger `/docs` → 200; `/app/data` confirmed a **read-only mount** (image is data-free); `make down` cleanly removed the container + network.
 
-**Acceptance criteria.**
-- `make up` (manual, local) builds the image and serves `/predict` returning calibrated probabilities for a known fixture against the mounted matches table; `make down` stops it. (Docker is **not** run in unit tests — manual verification, like `make train` in Epic 04.)
-- The image is data-free; the matches table arrives via the mounted volume.
+**What shipped.**
+- **`serving/Dockerfile`:** `python:3.14-slim`; installs `requirements-serving.txt` (cached layer first), editable-installs `matchodds`, copies `models/v1.*` + `serving/`, runs as non-root `appuser`, `CMD ["python", "-m", "serving.app"]`. Image env: `MATCHODDS_ENVIRONMENT=docker` (no-reload path), `MATCHODDS_SERVE_HOST=0.0.0.0`, explicit `MATCHODDS_MODELS_DIR=/app/models` + `MATCHODDS_DATA_DIR=/app/data`.
+- **`docker-compose.yml`:** one `serving` service (build context = repo root), `ports: "${MATCHODDS_SERVE_PORT:-8000}:8000"`, read-only `./data:/app/data` mount (Decision 2).
+- **`.dockerignore`:** excludes `data/`, `.venv`, notebooks/tests/docs/demo, caches, planning docs, `.git` — keeps the build context data-/test-free.
+- **`makefile`:** `up` → `docker compose up -d --build`; `down` → `docker compose down`.
+- **`.env.template`:** replaced the stale `SERVING_*` placeholders with `MATCHODDS_SERVE_PORT/HOST/ENVIRONMENT`. **`README.md`:** added `make up`/`make down` to the quickstart + the data-free / `make data`-prerequisite / port note.
 
-**Gate.** `make check` → PASS; `make test` → all green (Docker build/run verified manually and noted in the post-task summary).
+**Deviations (minor, flagged).**
+- **Explicit `MATCHODDS_MODELS_DIR` / `MATCHODDS_DATA_DIR` in the image** (beyond the plan) — makes the container's paths robust regardless of install layout (config's repo-root heuristic would otherwise resolve relative to the install location). `MATCHODDS_SERVE_HOST=0.0.0.0` is set via Dockerfile ENV (not Python), so it binds all interfaces in-container without tripping bandit's B104.
+- **Editable install + `COPY README.md`** — plan said COPY `pyproject.toml`; used `pip install --no-deps -e .` (so repo-root paths land under `/app`) and copied `README.md` (pyproject's `readme` field needs it at build).
+- **`${MATCHODDS_SERVE_PORT:-8000}`** with a default + no `env_file` (avoids a hard dependency on `.env` existing); compose's native `.env` interpolation still applies.
+
+**Acceptance criteria.** Met — see Outcome.
 
 ---
 
