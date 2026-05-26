@@ -12,7 +12,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 |------|-----------------------------------------------------------------------------|----------------|--------|
 | 1    | Serving scaffold + deps + gate extension + `schemas.py` (the Pydantic contract) | ✅ Done | `65cf406` |
 | 2    | `inference.py` — load artifact + matches table; reconstruct features → `predict_proba` | ✅ Done | `9e4c75c` |
-| 3    | `api/main/` (health/env/metrics) + app factory `main.py` + entrypoint + `make serve` | ⬜ Not started | —      |
+| 3    | `api/main/` (health/env/metrics) + app factory `main.py` + entrypoint + `make serve` | ✅ Done | `6805caa` |
 | 4    | `api/predict/` — `POST /predict` (Manager + Views) wired to inference        | ⬜ Not started | —      |
 | 5    | `Dockerfile` + `docker-compose.yml` + `.dockerignore` + `make up` / `make down` | ⬜ Not started | —      |
 
@@ -79,16 +79,22 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ## Task 3 — `api/main/` + app factory `serving/app/main.py` + entrypoint + `make serve`
 
-**Scope (files to touch).**
-- `serving/app/api/main/main.py` (`MainManager`) + `views.py` (`MainManagerViews`): `GET /health`, `GET /env`, `GET /metrics` — mirroring quake-feed's `MainManager` exactly (router, `run()` wiring routes with summaries/tags/operation_ids). `/metrics` returns `prometheus_client.generate_latest()`; `/env` reads `settings.environment` + `__metadata__`.
-- `serving/app/metrics.py` (new, small): a `prometheus_client` `Counter` (e.g. `predictions_total`) on the default registry, imported by the predict view in Task 4.
-- `serving/app/main.py` (new): an app-factory class (e.g. `MatchOddsService`) that builds `FastAPI(title/description/version)` from `__metadata__`, constructs `MainManager`, and `.run()`s it onto the app; a `create_app()` helper for tests.
-- `serving/app/__main__.py` (new): `uvicorn.run` reading `settings.serve_host` / `serve_port`. `makefile`: `serve` → `python -m serving.app` (uvicorn, `--reload`).
-- `serving/tests/test_main_api.py` (new): `TestClient(create_app())` — `/health` 200 + `HealthResponse` shape; `/env` reflects `settings.environment` + version; `/metrics` returns the Prometheus text content-type.
+**Outcome.** The main router + app factory + `python -m serving.app` entrypoint shipped in the quake-feed Manager/Views shape. `make check` → PASS (mypy 37 files); `make test` → 124 passed (4 new). A live `python -m serving.app` boot served `/health` → `{"status":"ok","service":"match-odds","version":"0.1.0"}`, `/env` reflecting a `MATCHODDS_ENVIRONMENT` override, and `/metrics` in Prometheus text (`content-type: text/plain`).
 
-**Acceptance criteria.**
-- The app boots with only the main router; `/health`, `/env`, `/metrics` respond as specified; `make serve` launches uvicorn locally.
-- `serving/app/main.py` mirrors the quake-feed app-factory + Manager/Views structure.
+**What shipped.**
+- **`serving/app/api/main/views.py`** (`MainManagerViews`): `async` `health` / `env` / `metrics` (Decision 11 — trivial views stay async). `/metrics` returns `generate_latest()` with `CONTENT_TYPE_LATEST`; `/env` reads `settings.environment` + `__metadata__`.
+- **`serving/app/api/main/main.py`** (`MainManager`): owns the `APIRouter`, `run()` wires the three routes with summaries / operation_ids (`health`/`env`/`metrics`) / `Main` tag.
+- **`serving/app/main.py`** (`MatchOddsService`): builds `FastAPI(title/description/version)` from `__metadata__`, constructs each Manager and `.run()`s its router onto the app; `create_app()` factory for `__main__` + tests.
+- **`serving/app/__main__.py`:** `uvicorn` entrypoint reading `settings.serve_host`/`serve_port`.
+- **`serving/app/metrics.py`:** `predictions_total` Counter (default registry), consumed by the Task 4 predict view.
+- **`makefile`:** `serve` → `$(PY) -m serving.app`. **`.vulture_allowlist.py`:** `predictions_total` allowlisted until Task 4 consumes it.
+- **`serving/tests/test_main_api.py`:** `TestClient(create_app())` — `/health` shape, `/env` reflects `settings.environment` + version, `/metrics` content-type, plus an OpenAPI check that `health`/`env`/`metrics` operation_ids are exposed.
+
+**Deviations (minor, flagged).**
+- **`/env` model info:** kept the specced `{environment, application_name, version}` schema — did **not** reach back into the committed Task 1/2 artifacts to surface the loaded model (resolving the Task-2 open question in favour of the plan; surfacing it remains an easy future add).
+- **Reload wiring:** plan said "`serve → python -m serving.app` (uvicorn, `--reload`)". `make serve` stays `python -m serving.app`; `__main__.py` enables hot reload **only when `environment == "local"`** (the default) via uvicorn's import-string **factory** form (the only form where `reload=True` actually works), and serves a single pre-built app with no reloader otherwise — giving Task 5's Docker image a clean no-reload path (`MATCHODDS_ENVIRONMENT` ≠ `local`). `make serve` still hot-reloads locally.
+- **Logger kept in `MainManagerViews`** and genuinely used (a debug line in `env`; `MainManager.run` also debug-logs), preserving the quake-feed "logger to Views" detail without a dead attribute.
+- **Extra OpenAPI test** beyond the specced three.
 
 **Gate.** `make check` → PASS; `make test` → all green.
 
