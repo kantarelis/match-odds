@@ -1,0 +1,33 @@
+# Keep the build context small and the image data-free + test-free.
+.git
+.github
+.venv
+venv
+
+# Data is mounted at runtime, never baked into the image.
+data/
+
+# Not needed to serve.
+notebooks/
+demo/
+docs/
+tests/
+serving/tests/
+
+# Caches / build / coverage / local env.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+*.egg-info/
+build/
+dist/
+htmlcov/
+.coverage
+coverage.svg
+.env
+
+# Planning docs.
+PLAN.md
+MASTER_PLAN.md

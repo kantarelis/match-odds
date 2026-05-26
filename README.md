@@ -43,11 +43,19 @@ make install-dev   # create .venv, install the package + dev/test deps
 make check         # static-analysis gate (isort, black, flake8, mypy, bandit, vulture, nbqa)
 make test          # run the test suite
 make repro         # data -> features -> train (lands across Epics 02-04)
-make serve         # FastAPI inference API (Epic 05)
+make serve         # FastAPI inference API locally (uvicorn, hot reload)
+make up            # build + run the service in Docker (run `make data` first — see below)
+make down          # stop the Docker service
 make demo          # Streamlit demo (Epic 06)
 ```
 
 Run `make help` for the full target list.
+
+The Docker image is **data-free**: it bakes in the frozen `models/v1.*` but mounts the master
+matches table read-only from `./data`, so run `make data` (which writes
+`data/processed/matches.parquet`) before `make up`. The published host port defaults to `8000`;
+override it with `MATCHODDS_SERVE_PORT`. Once up, the contract lives at `POST /predict`, with
+Swagger at `/docs`.
 
 ## Repository
 

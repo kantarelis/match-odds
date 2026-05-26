@@ -114,9 +114,9 @@ repro: data features train
 serve:
 	$(PY) -m serving.app
 up:
-	@echo "make up — not implemented until Epic 05 (docker compose)."
+	docker compose up -d --build
 down:
-	@echo "make down — not implemented until Epic 05 (docker compose)."
+	docker compose down
 demo:
 	@echo "make demo — not implemented until Epic 06 (Streamlit demo)."
 nb-run:
