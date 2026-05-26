@@ -11,6 +11,7 @@ from matchodds.data import sources, teams
 from matchodds.data.schema import Match
 from matchodds.features import pipeline
 from matchodds.modeling import cv, metrics
+from serving.app import metrics as metrics_module
 from serving.app.inference import Inference, get_inference
 from serving.app.schemas import EnvResponse, HealthResponse, OutcomeProbabilities, PredictRequest
 
@@ -89,3 +90,6 @@ EnvResponse.version
 # Task 4. (UnknownFixtureError already has an in-module consumer, so it needs no entry here.)
 Inference.predict
 get_inference
+
+# serving.app.metrics — the predictions counter; incremented by the PredictViews in Task 4.
+metrics_module.predictions_total

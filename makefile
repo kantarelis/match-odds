@@ -112,7 +112,7 @@ train:
 	$(PY) -m matchodds.modeling.train
 repro: data features train
 serve:
-	@echo "make serve — not implemented until Epic 05 (FastAPI service)."
+	$(PY) -m serving.app
 up:
 	@echo "make up — not implemented until Epic 05 (docker compose)."
 down:
