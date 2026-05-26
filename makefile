@@ -5,8 +5,8 @@ PY := $(VENV)/bin/python
 PIP := $(PY) -m pip
 COVERAGE_BADGE := $(VENV)/bin/coverage-badge
 
-# Paths formatted / linted by the gate (mypy and bandit run on src only; see check below).
-CODE_PATHS := src tests .vulture_allowlist.py
+# Paths formatted / linted by the gate (mypy / bandit / vulture run on src + serving/app; see check).
+CODE_PATHS := src serving tests .vulture_allowlist.py
 
 .DEFAULT_GOAL := help
 
@@ -17,6 +17,7 @@ help:
 	@echo "  install        Editable package + runtime core deps"
 	@echo "  install-dev    Editable package + dev + test deps (local development)"
 	@echo "  install-test   Test deps only"
+	@echo "  install-serve  Editable package + serving runtime deps (fastapi, uvicorn)"
 	@echo "  format         Auto-format: isort + black (incl. notebooks via nbqa)"
 	@echo "  check          Gate: isort black flake8 mypy bandit vulture nbqa"
 	@echo "  test           Run the test suite"
@@ -50,6 +51,11 @@ install-dev: $(VENV)
 install-test: $(VENV)
 	$(PIP) install -r requirements-test.txt
 
+.PHONY: install-serve
+install-serve: $(VENV)
+	$(PIP) install -e .
+	$(PIP) install -r requirements-serving.txt
+
 # ----- quality gate -----
 .PHONY: format
 format:
@@ -65,9 +71,9 @@ check:
 	$(PY) -m isort --check-only $(CODE_PATHS)
 	$(PY) -m black --check $(CODE_PATHS)
 	$(PY) -m flake8 $(CODE_PATHS)
-	$(PY) -m mypy src
-	$(PY) -m bandit -q -r src
-	$(PY) -m vulture src .vulture_allowlist.py
+	$(PY) -m mypy src serving/app
+	$(PY) -m bandit -q -r src serving/app
+	$(PY) -m vulture src serving/app .vulture_allowlist.py
 	$(MAKE) nb-lint
 
 .PHONY: nb-lint
@@ -106,11 +112,11 @@ train:
 	$(PY) -m matchodds.modeling.train
 repro: data features train
 serve:
-	@echo "make serve — not implemented until Epic 05 (FastAPI service)."
+	$(PY) -m serving.app
 up:
-	@echo "make up — not implemented until Epic 05 (docker compose)."
+	docker compose up -d --build
 down:
-	@echo "make down — not implemented until Epic 05 (docker compose)."
+	docker compose down
 demo:
 	@echo "make demo — not implemented until Epic 06 (Streamlit demo)."
 nb-run:

@@ -33,7 +33,7 @@ src_paths = ["src", "tests", "serving", "demo"]
 python_version = "3.14"
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["src"]
+files = ["src", "serving/app"]
 mypy_path = "src"
 explicit_package_bases = true
 show_error_codes = true
@@ -47,5 +47,5 @@ ignore_missing_imports = true
 exclude_dirs = ["tests", ".venv", "build", "dist"]
 
 [tool.vulture]
-paths = ["src", ".vulture_allowlist.py"]
+paths = ["src", "serving/app", ".vulture_allowlist.py"]
 min_confidence = 60

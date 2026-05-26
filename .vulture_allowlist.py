@@ -11,6 +11,7 @@ from matchodds.data import sources, teams
 from matchodds.data.schema import Match
 from matchodds.features import pipeline
 from matchodds.modeling import cv, metrics
+from serving.app.schemas import EnvResponse, HealthResponse, OutcomeProbabilities, PredictRequest
 
 __metadata__.__repository__
 
@@ -25,6 +26,9 @@ settings.data_dir
 settings.models_dir
 settings.raw_dir
 settings.processed_dir
+settings.serve_host
+settings.serve_port
+settings.environment
 
 # data.schema.Match — fields/validators consumed by the matches builder in Task 5.
 Match.model_config
@@ -62,3 +66,20 @@ metrics.reliability_curve
 # modeling.cv — get_n_splits exists only for the scikit-learn cv protocol (called by sklearn at
 # runtime, never by our src). TimeOrderedSplit + split now have real consumers in train.py / calibration.
 cv.TimeOrderedSplit.get_n_splits
+
+# serving.app.schemas — the HTTP contract. Fields are read by the inference layer + API views
+# (Tasks 2-4) and by FastAPI's serializer at runtime; remove entries as their consumers land.
+PredictRequest.model_config
+PredictRequest.home
+PredictRequest.away
+PredictRequest.league
+PredictRequest.match_date
+OutcomeProbabilities.home_win
+OutcomeProbabilities.draw
+OutcomeProbabilities.away_win
+HealthResponse.status
+HealthResponse.service
+HealthResponse.version
+EnvResponse.environment
+EnvResponse.application_name
+EnvResponse.version

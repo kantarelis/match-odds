@@ -1,0 +1,16 @@
+# Local-only inference service (no cloud hosting in this repo). `make up` builds + runs it.
+# The image is data-free: the master matches table is mounted read-only from ./data, so
+# `make data` must have produced data/processed/matches.parquet before `make up`.
+services:
+  serving:
+    build:
+      context: .
+      dockerfile: serving/Dockerfile
+    image: match-odds-serving
+    ports:
+      # Host port (override with MATCHODDS_SERVE_PORT) -> the container's fixed 8000.
+      - "${MATCHODDS_SERVE_PORT:-8000}:8000"
+    environment:
+      MATCHODDS_ENVIRONMENT: docker
+    volumes:
+      - ./data:/app/data:ro
