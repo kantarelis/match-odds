@@ -1,4 +1,7 @@
 -r requirements.txt
+# Serving runtime, so the test env can import the app + run the serving TestClient suites. (httpx,
+# which TestClient needs, is already a core dep in requirements.txt.)
+-r requirements-serving.txt
 
 pytest>=8.3,<9
 pytest-cov>=6.0,<7

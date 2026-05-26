@@ -1,0 +1,8 @@
+-r requirements.txt
+
+# Inference service runtime (Epic 05). Plain `uvicorn` (not `uvicorn[standard]`): the extra pulls
+# compiled uvloop/httptools/websockets that may lack cp314 wheels — the same reason streamlit is
+# deferred in requirements-dev.txt.
+fastapi>=0.115,<1
+uvicorn>=0.34,<1
+prometheus-client>=0.21,<1

@@ -1,4 +1,6 @@
 -r requirements.txt
+# Serving runtime, so `make check` can import + type-check serving/app without the test file.
+-r requirements-serving.txt
 
 # Notebooks
 jupyter>=1.1,<2

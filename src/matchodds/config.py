@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     # Public data source (football-data.co.uk).
     football_data_base_url: str = "https://www.football-data.co.uk/mmz4281/"
 
+    # Serving (Epic 05): uvicorn bind host/port and the runtime environment label reported by /env.
+    serve_host: str = "127.0.0.1"
+    serve_port: int = 8000
+    environment: str = "local"
+
     # Filesystem layout. ``data_dir`` is the env-overridable root; raw/processed derive from it.
     repo_root: Path = _REPO_ROOT
     data_dir: Path = _REPO_ROOT / "data"
