@@ -8,11 +8,28 @@ the app. :func:`create_app` is the entrypoint used by ``__main__`` and the tests
 from __future__ import annotations
 
 import logging
+from typing import Protocol
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from matchodds import __metadata__
 from serving.app.api.main.main import MainManager
+from serving.app.api.predict.main import PredictManager
+from serving.app.inference import UnknownFixtureError
+
+
+class _Manager(Protocol):
+    """A quake-feed-style API Manager: wires its routes and returns the router to mount."""
+
+    def run(self) -> APIRouter:
+        """Wire routes onto the manager's router and return it."""
+        ...
+
+
+def _unknown_fixture_handler(_request: Request, exc: Exception) -> JSONResponse:
+    """Map an out-of-scope fixture (:class:`UnknownFixtureError`) to HTTP 422 with the message."""
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 
 class MatchOddsService:
@@ -25,7 +42,8 @@ class MatchOddsService:
             description="Calibrated football match-outcome probabilities from the frozen model artifact.",
             version=__metadata__.__version__,
         )
-        self.managers = [MainManager(logger=self.logger)]
+        self.app.add_exception_handler(UnknownFixtureError, _unknown_fixture_handler)
+        self.managers: list[_Manager] = [MainManager(logger=self.logger), PredictManager(logger=self.logger)]
 
     def run(self) -> FastAPI:
         """Mount every Manager's router onto the app and return it."""
