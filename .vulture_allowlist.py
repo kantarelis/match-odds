@@ -5,6 +5,8 @@ This is a project-wide configuration artifact (the gate-approved path in CLAUDE.
 line-level suppression. Remove entries as their real consumers land in later epics.
 """
 
+from demo.service import PredictClient, available_leagues, teams_for
+from demo.summary import verbal_summary
 from matchodds import __metadata__
 from matchodds.config import Settings, settings
 from matchodds.data import sources, teams
@@ -83,3 +85,11 @@ HealthResponse.version
 EnvResponse.environment
 EnvResponse.application_name
 EnvResponse.version
+
+# demo (Epic 06) — the service client, option helpers, and verbal summary are defined in Task 1;
+# their real consumer is the Streamlit UI in demo/app.py (Task 2). Referenced here so vulture over
+# the demo source doesn't flag them before app.py lands.
+PredictClient.predict
+available_leagues
+teams_for
+verbal_summary

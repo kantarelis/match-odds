@@ -1,6 +1,8 @@
 -r requirements.txt
 # Serving runtime, so `make check` can import + type-check serving/app without the test file.
 -r requirements-serving.txt
+# Demo runtime (Epic 06), so `make check` can import + type-check the demo source (streamlit, httpx).
+-r requirements-demo.txt
 
 # Notebooks
 jupyter>=1.1,<2
@@ -19,5 +21,4 @@ pandas-stubs>=2.2,<3
 # Modelling / visualisation
 matplotlib>=3.9,<4
 statsmodels>=0.14,<1
-# streamlit — demo UI, added in Epic 06. Deferred: pulls pyarrow, which has no cp314 wheel yet.
 # lightgbm>=4.5,<5   # optional alternative booster; enable if compared in Epic 04

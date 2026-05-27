@@ -2,6 +2,8 @@
 # Serving runtime, so the test env can import the app + run the serving TestClient suites. (httpx,
 # which TestClient needs, is already a core dep in requirements.txt.)
 -r requirements-serving.txt
+# Demo deps (Epic 06): streamlit, so `make test` can run the demo unit suite (+ the Task 2 AppTest).
+-r requirements-demo.txt
 
 pytest>=8.3,<9
 pytest-cov>=6.0,<7
