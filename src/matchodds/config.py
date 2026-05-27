@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     serve_port: int = 8000
     environment: str = "local"
 
+    # Demo (Epic 06): base URL the Streamlit demo POSTs fixtures to. docker-compose overrides this to
+    # http://serving:8000 for the demo container (env MATCHODDS_SERVICE_URL).
+    service_url: str = "http://127.0.0.1:8000"
+
     # Filesystem layout. ``data_dir`` is the env-overridable root; raw/processed derive from it.
     repo_root: Path = _REPO_ROOT
     data_dir: Path = _REPO_ROOT / "data"

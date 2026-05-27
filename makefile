@@ -5,8 +5,10 @@ PY := $(VENV)/bin/python
 PIP := $(PY) -m pip
 COVERAGE_BADGE := $(VENV)/bin/coverage-badge
 
-# Paths formatted / linted by the gate (mypy / bandit / vulture run on src + serving/app; see check).
-CODE_PATHS := src serving tests .vulture_allowlist.py
+# Paths formatted / linted by the gate. isort/black/flake8 cover all of these; mypy/bandit/vulture
+# run over source only — src + serving/app + the demo source via the `demo/*.py` glob (so demo/tests
+# is excluded, just as serving/tests is). See check.
+CODE_PATHS := src serving tests demo .vulture_allowlist.py
 
 .DEFAULT_GOAL := help
 
@@ -18,6 +20,7 @@ help:
 	@echo "  install-dev    Editable package + dev + test deps (local development)"
 	@echo "  install-test   Test deps only"
 	@echo "  install-serve  Editable package + serving runtime deps (fastapi, uvicorn)"
+	@echo "  install-demo   Editable package + demo runtime deps (streamlit)"
 	@echo "  format         Auto-format: isort + black (incl. notebooks via nbqa)"
 	@echo "  check          Gate: isort black flake8 mypy bandit vulture nbqa"
 	@echo "  test           Run the test suite"
@@ -56,6 +59,11 @@ install-serve: $(VENV)
 	$(PIP) install -e .
 	$(PIP) install -r requirements-serving.txt
 
+.PHONY: install-demo
+install-demo: $(VENV)
+	$(PIP) install -e .
+	$(PIP) install -r requirements-demo.txt
+
 # ----- quality gate -----
 .PHONY: format
 format:
@@ -71,9 +79,9 @@ check:
 	$(PY) -m isort --check-only $(CODE_PATHS)
 	$(PY) -m black --check $(CODE_PATHS)
 	$(PY) -m flake8 $(CODE_PATHS)
-	$(PY) -m mypy src serving/app
-	$(PY) -m bandit -q -r src serving/app
-	$(PY) -m vulture src serving/app .vulture_allowlist.py
+	$(PY) -m mypy src serving/app demo/*.py
+	$(PY) -m bandit -q -r src serving/app demo/*.py
+	$(PY) -m vulture src serving/app demo/*.py .vulture_allowlist.py
 	$(MAKE) nb-lint
 
 .PHONY: nb-lint
@@ -118,7 +126,7 @@ up:
 down:
 	docker compose down
 demo:
-	@echo "make demo — not implemented until Epic 06 (Streamlit demo)."
+	$(PY) -m streamlit run demo/app.py $(if $(MATCHODDS_DEMO_PORT),--server.port=$(MATCHODDS_DEMO_PORT))
 nb-run:
 	@if ls notebooks/*.ipynb >/dev/null 2>&1; then \
 		for nb in notebooks/*.ipynb; do \

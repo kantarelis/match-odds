@@ -1,0 +1,7 @@
+# Streamlit demo UI (Epic 06) — a thin HTTP client of the inference service. The HTTP client
+# (httpx) is already a core dep, so streamlit is the only addition. Pulling in the runtime core lets
+# the demo import the matchodds canonical registry + typed config; it never loads the model.
+-r requirements.txt
+# Pinned >=1.57: that release and its whole tree (httptools/websockets, pyarrow 24) ship cp314
+# wheels, so the demo resolves wheels-only on Python 3.14.
+streamlit>=1.57,<2
