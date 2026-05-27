@@ -88,7 +88,7 @@ serving/                     # FastAPI inference service (reuses quake-feed Fast
 ├── Dockerfile
 └── tests/
 
-demo/                        # Streamlit demo ("odds this weekend")
+demo/                        # Streamlit demo (next-match forecast)
 └── app.py                   # Calls the inference service; renders home/draw/away probabilities
 
 data/                        # GITIGNORED — never committed
