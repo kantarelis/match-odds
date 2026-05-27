@@ -11,7 +11,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | Task | Description                                                                 | Status         | Commit |
 |------|-----------------------------------------------------------------------------|----------------|--------|
 | 1    | Streamlit dep + `service_url` config + gate/test extension + demo service-client & summary (logic, no UI) | ✅ Done | `bfbd896` |
-| 2    | `demo/app.py` Streamlit UI (inputs → predict → chart + plain-English read + graceful errors) + `make demo` | ⬜ Not started | — |
+| 2    | `demo/app.py` Streamlit UI (inputs → predict → chart + plain-English read + graceful errors) + `make demo` | ✅ Done | `ceb318e` |
 | 3    | `demo/Dockerfile` + docker-compose `demo` service + `make up` (serving + demo) + docs | ⬜ Not started | — |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
@@ -50,19 +50,18 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 2 — `demo/app.py`: the Streamlit UI + `make demo`
+## Task 2 — `demo/app.py`: the Streamlit UI + `make demo` — ✅ Done (`ceb318e`)
 
-**Scope (files to touch).**
-- `demo/app.py` (new): the Streamlit app. A title + one-line intro; a **league** selectbox (`available_leagues()`), **home**/**away** selectboxes (`teams_for(league)`), and a **match date** input; a **Predict** button that calls `PredictClient().predict(...)`. On success: render the three probabilities as a bar chart (e.g. `st.bar_chart`/altair) + `st.metric` trio + the `verbal_summary` line. Guard `home == away` with a hint (no call). Catch `ServiceError` → `st.error(...)` with the friendly/service `detail` message. Keep the script thin — all logic comes from `demo/service.py` + `demo/summary.py`.
-- `makefile`: `demo` → `$(PY) -m streamlit run demo/app.py` (local; honour `MATCHODDS_DEMO_PORT` if set).
-- `pyproject.toml`: if strict mypy flags the streamlit surface, add `streamlit.*` to the `ignore_missing_imports` override (Decision 8) — project-wide, not line-level.
-- `demo/tests/test_app.py` (new): a headless `streamlit.testing.v1.AppTest` smoke — initial render populates the league/team selectboxes without error; with `PredictClient.predict` monkeypatched to return fixed `Probabilities`, exercising the predict path renders the metrics + summary; with it raising `ServiceError`, an `st.error` is shown. (Scale back to a render-only smoke if `AppTest` interaction proves brittle — the predict/error logic is already covered by Task 1.)
+**Outcome.** Landed as planned; `make check` → PASS and `make test` → **139 passed** (3 new `AppTest` cases). What shipped:
 
-**Acceptance criteria.**
-- `make demo` launches Streamlit locally; choosing a fixture and predicting renders calibrated probabilities + the plain-English read; a down service shows a friendly message, not a traceback.
-- The `AppTest` smoke passes headlessly under `make test`.
+- **`demo/app.py`.** Thin Streamlit script (logic stays in `demo/service.py` + `demo/summary.py`): title + caption; **league** selectbox (`available_leagues()`), side-by-side **home**/**away** selectboxes (`teams_for(league)`, away defaulting to a different team), **match date** input; a **Predict** button. On click: `home == away` → `st.warning` (no call); otherwise `PredictClient().predict(...)` → `st.metric` trio + `st.bar_chart` of the three probabilities + the `verbal_summary` via `st.info`. `ServiceError` → `st.error(str(exc))` (friendly "unavailable…" / service `detail`, no traceback). A small typed `_render_prediction(probs, home, away)` helper holds the success rendering.
+- **`makefile`.** `demo` recipe now runs `streamlit run demo/app.py`, appending `--server.port=$(MATCHODDS_DEMO_PORT)` only when that env var is set (make `$(if …)`).
+- **`demo/tests/test_app.py`.** Headless `streamlit.testing.v1.AppTest` smoke — initial render populates all three selectboxes; with `PredictClient.predict` monkeypatched to fixed `Probabilities`, the predict path renders 3 metrics + the summary ("favours…60%"); with it raising `ServiceError`, the `st.error` carries the message. No browser, no network. The full interaction smoke was robust enough that the render-only fallback wasn't needed.
+- **`.vulture_allowlist.py`.** Removed the 5 demo entries added in Task 1 — `app.py` is now their real consumer (allowlist-hygiene rule).
 
-**Gate.** `make check` → PASS; `make test` → all green (local end-to-end with `make serve` noted in the post-task summary).
+**Decision 8 (streamlit + strict mypy) — contingency not needed.** Streamlit ships `py.typed`, so the pre-existing `streamlit.*` `ignore_missing_imports` override is a no-op, but mypy is **clean** on `app.py` against streamlit's real types. No `pyproject.toml` change was required.
+
+**Verification.** The `st.bar_chart` + metric + summary render is exercised for real by the passing `AppTest` (it runs the script in-process). The live browser round-trip (`make serve` + `make demo`, and the down-service path) is the manual step, as with Epic 05's server processes.
 
 ---
 
