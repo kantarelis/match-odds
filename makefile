@@ -27,6 +27,7 @@ help:
 	@echo "  test-report    Tests + HTML coverage report, opened in the browser"
 	@echo "  coverage-badge Regenerate coverage.svg (README badge) from .coverage"
 	@echo "  nb-lint        Lint notebooks via nbqa (no-op if none)"
+	@echo "  restart        Rebuild images + restart the Docker stack (down + up --build)"
 	@echo "  data features train repro serve up down demo nb-run   (stubs until later epics)"
 
 # ----- environment / install -----
@@ -111,7 +112,7 @@ coverage-badge:
 	$(COVERAGE_BADGE) -f -o coverage.svg
 
 # ----- pipeline / serving stubs (filled by later epics) -----
-.PHONY: data features train repro serve up down demo nb-run
+.PHONY: data features train repro serve up down restart demo nb-run
 data:
 	$(PY) -m matchodds.data.matches
 features:
@@ -125,6 +126,7 @@ up:
 	docker compose up -d --build
 down:
 	docker compose down
+restart: down up
 demo:
 	$(PY) -m streamlit run demo/app.py $(if $(MATCHODDS_DEMO_PORT),--server.port=$(MATCHODDS_DEMO_PORT))
 nb-run:

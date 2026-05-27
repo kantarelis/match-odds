@@ -47,6 +47,7 @@ make serve         # FastAPI inference API locally (uvicorn, hot reload)
 make demo          # Streamlit demo locally (calls a service on :8000 — run `make serve` first)
 make up            # build + run the service + demo in Docker (run `make data` first — see below)
 make down          # stop the Docker stack
+make restart       # rebuild images + restart the Docker stack (down + up)
 ```
 
 Run `make help` for the full target list.

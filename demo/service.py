@@ -28,6 +28,17 @@ _UNREACHABLE_MESSAGE = (
     "Inference service unavailable — is it running? Start it with `make up` (Docker) or `make serve`."
 )
 
+# The demo forecasts the teams' *next*, unscheduled meeting — which has no calendar date. The frozen
+# service still requires a match_date, so we send a near-future cutoff: it makes the service score the
+# fixture with each side's latest known form, and every sufficiently-future date collapses to that
+# same snapshot, so the exact value is irrelevant.
+_NEXT_MATCH_HORIZON = dt.timedelta(days=365)
+
+
+def _next_match_date() -> dt.date:
+    """A point-in-time cutoff representing the teams' next (unscheduled) meeting."""
+    return dt.date.today() + _NEXT_MATCH_HORIZON
+
 
 @dataclass(frozen=True)
 class Probabilities:
@@ -64,9 +75,15 @@ class PredictClient:
         else:
             self._client = httpx.Client(base_url=settings.service_url, timeout=_PREDICT_TIMEOUT_S)
 
-    def predict(self, home: str, away: str, league: str, match_date: dt.date) -> Probabilities:
-        """Calibrated home/draw/away probabilities for a fixture; raise ServiceError on any failure."""
-        payload = {"home": home, "away": away, "league": league, "match_date": match_date.isoformat()}
+    def predict(self, home: str, away: str, league: str, match_date: dt.date | None = None) -> Probabilities:
+        """Calibrated home/draw/away probabilities for the teams' next meeting.
+
+        ``match_date`` is the point-in-time cutoff the frozen service requires; the demo never asks
+        the user for it (all future dates give the same forecast — see :func:`_next_match_date`), so
+        it defaults to a near-future date. Raises ServiceError on any failure.
+        """
+        cutoff = match_date if match_date is not None else _next_match_date()
+        payload = {"home": home, "away": away, "league": league, "match_date": cutoff.isoformat()}
         try:
             response = self._client.post("/predict", json=payload)
         except httpx.HTTPError as exc:

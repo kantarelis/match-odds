@@ -21,6 +21,8 @@ def test_initial_render_populates_selectboxes():
     assert not at.exception
     # League + home + away selectboxes, each populated from the canonical registry.
     assert len(at.selectbox) == 3
+    # No date picker — the demo forecasts the next (unscheduled) meeting.
+    assert len(at.date_input) == 0
     assert at.selectbox[0].options  # leagues
     assert at.selectbox[1].options  # home teams
     assert at.selectbox[0].value != at.selectbox[1].value or len(at.selectbox[1].options) == 1

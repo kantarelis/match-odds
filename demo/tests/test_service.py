@@ -47,6 +47,19 @@ def test_predict_posts_fixture_and_parses_probabilities():
     assert probs == Probabilities(home_win=0.6, draw=0.25, away_win=0.15)
 
 
+def test_predict_omitting_match_date_sends_a_future_cutoff():
+    captured = {}
+
+    def handler(request):
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"home_win": 0.5, "draw": 0.3, "away_win": 0.2})
+
+    _client(handler).predict(home="Arsenal", away="Chelsea", league="English Premier League")
+
+    sent = dt.date.fromisoformat(captured["body"]["match_date"])
+    assert sent > dt.date.today()
+
+
 def test_predict_connection_error_raises_service_error():
     def handler(request):
         raise httpx.ConnectError("no route to host")

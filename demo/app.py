@@ -1,13 +1,13 @@
-"""Streamlit demo — "odds this weekend": pick a fixture, get calibrated 1X2 probabilities.
+"""Streamlit demo — next-match forecast: pick two teams, get calibrated 1X2 probabilities.
 
-A thin HTTP client of the inference service (PLAN Epic 06): all logic lives in :mod:`demo.service`
-and :mod:`demo.summary`; this script only draws widgets and wires them together. Streamlit reruns the
-whole script on every interaction, so the predict call is guarded behind the button press.
+A thin HTTP client of the inference service: all logic lives in :mod:`demo.service` and
+:mod:`demo.summary`; this script only draws widgets and wires them together. The demo forecasts the
+teams' *next* (unscheduled) meeting, so it asks for no date — :class:`demo.service.PredictClient`
+sends the point-in-time cutoff the frozen service needs. Streamlit reruns the whole script on every
+interaction, so the predict call is guarded behind the button press.
 """
 
 from __future__ import annotations
-
-import datetime as dt
 
 import pandas as pd
 import streamlit as st
@@ -35,12 +35,12 @@ def _render_prediction(probs: Probabilities, home: str, away: str) -> None:
     st.info(verbal_summary(probs))
 
 
-st.set_page_config(page_title="match-odds — odds this weekend", page_icon="⚽")
+st.set_page_config(page_title="match-odds — next-match forecast", page_icon="⚽")
 
-st.title("⚽ match-odds — odds this weekend")
+st.title("⚽ match-odds — next-match forecast")
 st.caption(
-    "Calibrated home / draw / away probabilities for a fixture, served by the match-odds inference "
-    "service. Pick a league, the two teams, and a match date, then hit Predict."
+    "Calibrated home / draw / away probabilities for the next meeting of two teams, served by the "
+    "match-odds inference service. Pick a league and the two teams, then hit Predict."
 )
 
 league = st.selectbox("League", available_leagues())
@@ -48,14 +48,17 @@ team_names = teams_for(league)
 home_box, away_box = st.columns(2)
 home = home_box.selectbox("Home team", team_names, index=0)
 away = away_box.selectbox("Away team", team_names, index=1 if len(team_names) > 1 else 0)
-match_date = st.date_input("Match date", value=dt.date.today())
+st.caption(
+    "🗓️ Forecast for the **next match** between these teams — it uses each side's latest form, so no "
+    "fixture date is needed."
+)
 
 if st.button("Predict", type="primary"):
     if home == away:
         st.warning("Pick two different teams — a side can't play itself.")
     else:
         try:
-            probabilities = PredictClient().predict(home=home, away=away, league=league, match_date=match_date)
+            probabilities = PredictClient().predict(home=home, away=away, league=league)
         except ServiceError as exc:
             st.error(str(exc))
         else:
