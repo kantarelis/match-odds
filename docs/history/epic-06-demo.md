@@ -12,7 +12,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 |------|-----------------------------------------------------------------------------|----------------|--------|
 | 1    | Streamlit dep + `service_url` config + gate/test extension + demo service-client & summary (logic, no UI) | ✅ Done | `bfbd896` |
 | 2    | `demo/app.py` Streamlit UI (inputs → predict → chart + plain-English read + graceful errors) + `make demo` | ✅ Done | `ceb318e` |
-| 3    | `demo/Dockerfile` + docker-compose `demo` service + `make up` (serving + demo) + docs | ⬜ Not started | — |
+| 3    | `demo/Dockerfile` + docker-compose `demo` service + `make up` (serving + demo) + docs | ✅ Done | `31edea5` |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
 
@@ -65,20 +65,18 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 3 — `demo/Dockerfile` + docker-compose `demo` service + `make up` (serving + demo) + docs
+## Task 3 — `demo/Dockerfile` + docker-compose `demo` service + `make up` (serving + demo) + docs — ✅ Done (`31edea5`)
 
-**Scope (files to touch).**
-- `demo/Dockerfile` (new): `python:3.14-slim`; install `requirements-demo.txt`; editable-install `matchodds` (for the registry + config); `COPY demo/`; non-root user; `EXPOSE 8501`; `CMD` runs `streamlit run demo/app.py --server.address=0.0.0.0 --server.port=8501`. Layer the requirements copy first for cache reuse. Image env defaults: `MATCHODDS_SERVICE_URL=http://serving:8000`.
-- `docker-compose.yml`: add a `demo` service (build `demo/Dockerfile`, `depends_on: serving`, `environment: MATCHODDS_SERVICE_URL=http://serving:8000`, `ports: "${MATCHODDS_DEMO_PORT:-8501}:8501"`). The existing `up`/`down` recipes now manage both services.
-- `.dockerignore`: **remove the `demo/` exclusion** (the demo image must COPY it; the serving image is unaffected since it never COPYs `demo/`); add `demo/tests/` to keep the demo image test-free.
-- `makefile`: `up`/`down` unchanged (they already build/run every compose service); `demo` stays the local Streamlit target.
-- `README.md` / `.env.template`: document `make demo` (local), `make up` now serving **+** demo, `MATCHODDS_DEMO_PORT`, and `MATCHODDS_SERVICE_URL`.
+**Outcome.** Landed as planned; `make check` → PASS and `make test` → **139 passed** (no Python touched — the gate/tests confirm green-state). The Docker pieces were verified beyond the unit gate (see below). What shipped:
 
-**Acceptance criteria.**
-- `make up` (manual, local) builds + runs **serving + demo**; opening the demo (`localhost:8501`) renders calibrated probabilities for a known fixture end-to-end (demo → serving → model, against the mounted matches table); `make down` stops both. (Docker is **not** run in unit tests — manual verification, as in Epic 05.)
-- The demo image is data-free and model-free; it reaches the serving container over the compose network.
+- **`demo/Dockerfile`.** `python:3.14-slim`, mirroring `serving/Dockerfile`'s cache-friendly layering: `requirements-demo.txt` → editable `matchodds` (`--no-deps`) → `COPY demo/` → non-root `appuser` → `EXPOSE 8501` → `CMD streamlit run demo/app.py --server.address=0.0.0.0 --server.port=8501`. Carries no `models/` and no `data` mount. Env defaults `MATCHODDS_SERVICE_URL=http://serving:8000`, plus `STREAMLIT_SERVER_HEADLESS=true` + `STREAMLIT_BROWSER_GATHER_USAGE_STATS=false` (see decision below).
+- **`docker-compose.yml`.** Added the `demo` service (`build demo/Dockerfile`, `depends_on: serving`, `MATCHODDS_SERVICE_URL: http://serving:8000`, `ports "${MATCHODDS_DEMO_PORT:-8501}:8501"`); header updated to the serving **+** demo stack. `make up`/`make down` (unchanged) now manage both.
+- **`.dockerignore`.** Removed the `demo/` exclusion (the demo image `COPY`s it; serving is unaffected — it never `COPY`s `demo/`); added `demo/tests/` to keep both images test-free.
+- **`README.md` / `.env.template`.** Documented `make demo` (local, needs `make serve`), `make up` now serving + demo, `localhost:8501`, `MATCHODDS_DEMO_PORT`, and `MATCHODDS_SERVICE_URL`.
 
-**Gate.** `make check` → PASS; `make test` → all green (Docker build/run verified manually and noted in the post-task summary).
+**Decision (within scope).** Added `STREAMLIT_SERVER_HEADLESS=true` + `STREAMLIT_BROWSER_GATHER_USAGE_STATS=false` to the image env (the plan specified only the `MATCHODDS_SERVICE_URL` default) so the container starts clean without a TTY prompt — directly supporting the "opening the demo renders end-to-end" criterion.
+
+**Verification (Docker, run manually — not in the unit gate).** `docker compose config` renders both services correctly (demo→serving dependency, port 8501, `MATCHODDS_SERVICE_URL`). `docker compose build demo` succeeds (14 steps; `matchodds-0.1.0` editable install). In-container `import streamlit, httpx, matchodds, demo.service, demo.summary` OK and `available_leagues()` → 6. `/app` carries no `models/` and no `data/` — confirmed data- and model-free. The live browser round-trip (`make data` → `make up` → predict at `localhost:8501` → `make down`) remains the user's manual step.
 
 ---
 
