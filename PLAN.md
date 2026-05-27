@@ -10,7 +10,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 | Task | Description                                                                 | Status         | Commit |
 |------|-----------------------------------------------------------------------------|----------------|--------|
-| 1    | Streamlit dep + `service_url` config + gate/test extension + demo service-client & summary (logic, no UI) | ⬜ Not started | — |
+| 1    | Streamlit dep + `service_url` config + gate/test extension + demo service-client & summary (logic, no UI) | ✅ Done | `bfbd896` |
 | 2    | `demo/app.py` Streamlit UI (inputs → predict → chart + plain-English read + graceful errors) + `make demo` | ⬜ Not started | — |
 | 3    | `demo/Dockerfile` + docker-compose `demo` service + `make up` (serving + demo) + docs | ⬜ Not started | — |
 
@@ -36,23 +36,17 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ---
 
-## Task 1 — Streamlit dep, `service_url` config, gate/test extension + the demo service-client & summary (logic, no UI)
+## Task 1 — Streamlit dep, `service_url` config, gate/test extension + the demo service-client & summary (logic, no UI) — ✅ Done (`bfbd896`)
 
-**Scope (files to touch).**
-- `requirements-demo.txt` (new): `-r requirements.txt` + `streamlit` (`httpx` is already core). Wire `-r requirements-demo.txt` into **both** `requirements-dev.txt` (so `make check` can import it) and `requirements-test.txt` (so `make test` — incl. the Task 2 `AppTest` — has streamlit). **Remove the stale streamlit/pyarrow deferral comment** in `requirements-dev.txt`.
-- `src/matchodds/config.py`: add `service_url: str = "http://127.0.0.1:8000"` to `Settings` (env `MATCHODDS_SERVICE_URL`).
-- `demo/__init__.py`, `demo/tests/__init__.py` — package skeleton so `demo.*` imports cleanly (drop `demo/.gitkeep`).
-- `demo/service.py` (new): `Probabilities` (a small typed `home_win/draw/away_win` value, e.g. a frozen dataclass); `ServiceError(Exception)`; `PredictClient` — `__init__(self, client: httpx.Client | None = None)` (default bound to `settings.service_url` with a short timeout); `predict(home, away, league, match_date) -> Probabilities` that POSTs to `/predict`, maps connection/timeout/non-200 to `ServiceError` (using the response `detail` on 422). Option helpers: `available_leagues() -> list[str]` (`settings.leagues`) and `teams_for(league) -> list[str]` (`sorted(teams.canonical_names(league))`).
-- `demo/summary.py` (new): `verbal_summary(probs: Probabilities) -> str` — names the favourite with its percentage when one outcome clearly leads, or calls it a close match when the spread is small.
-- **Gate extension** (makefile recipe is the source of truth — explicit path args override pyproject config; see the Epic 05 lesson): `CODE_PATHS += demo`; `mypy`/`vulture` over the demo *source* via a `demo/*.py` glob (which excludes `demo/tests/`); `bandit -r … demo` (its `exclude_dirs` already drops any `tests/`); keep `pyproject.toml` `[tool.mypy] files`/`[tool.vulture] paths` in sync (+ a `tests/` `exclude` for config-driven runs); `pytest.ini` `testpaths += demo/tests`; add an `install-demo` target.
-- `demo/tests/test_service.py` (new): with an `httpx.MockTransport`, `PredictClient.predict` builds the right request body and parses a 200 → `Probabilities`; a connection error and a 422 (with `detail`) each raise `ServiceError`; `available_leagues()` and `teams_for("English Premier League")` return the expected registry lists.
-- `demo/tests/test_summary.py` (new): a clear favourite → the summary names the team + percentage; a near-uniform distribution → the "close match" phrasing.
+**Outcome.** Landed as planned; `make check` → PASS and `make test` → **136 passed** (7 new demo tests). What shipped:
 
-**Acceptance criteria.**
-- `make check` now lints/type-checks the demo source and stays green; `make test` collects + passes `demo/tests`.
-- `streamlit` imports under the dev env; `PredictClient` works against a mocked service (offline) and raises `ServiceError` on failure; `verbal_summary` reads sensibly.
+- **Deps.** `requirements-demo.txt` (new): `-r requirements.txt` + `streamlit>=1.57,<2`, wired into `requirements-dev.txt` and `requirements-test.txt`; stale streamlit/pyarrow deferral comment removed. **Decision 1 verified empirically** during `make install-demo`: `streamlit 1.57.0` resolved wheels-only on cp314 (`httptools 0.8.0` + `websockets 16.0` cp314 wheels, `pyarrow 24` already core) — the original Epic 01 blocker is gone.
+- **Config.** `service_url: str = "http://127.0.0.1:8000"` added to `Settings` (env `MATCHODDS_SERVICE_URL`). Read in `demo/service.py`, so vulture sees it used — no allowlist entry needed.
+- **Demo logic (no UI).** `demo/service.py` — frozen `Probabilities`, `ServiceError`, `PredictClient` (optional injected `httpx.Client`, default bound to `settings.service_url`, 10 s timeout) POSTing to `/predict` and mapping connection/timeout/non-200 → `ServiceError` (surfacing the service `detail` on 422); option helpers `available_leagues()` / `teams_for(league)`. `demo/summary.py` — `verbal_summary(probs)` names the leading outcome + percentage, or "too close to call" when the lead over the runner-up is < 10 points. `demo/__init__.py` + `demo/tests/__init__.py` added; `demo/.gitkeep` dropped.
+- **Gate extension.** `CODE_PATHS += demo` (isort/black/flake8 over all of `demo/`); `mypy`/`bandit`/`vulture` over the demo *source* via the `demo/*.py` glob (excludes `demo/tests/`); `pyproject.toml` `[tool.mypy] files` / `[tool.vulture] paths` kept in sync with `tests/` excludes for config-driven runs; `pytest.ini testpaths += demo/tests`; `install-demo` target + help line. Five demo symbols (`PredictClient`, `.predict`, `available_leagues`, `teams_for`, `verbal_summary`) added to `.vulture_allowlist.py` — their real consumer is `app.py` in Task 2, so they drop out of the allowlist then.
+- **Tests.** `demo/tests/test_service.py` (mock-transport request-body + 200 parse, connection-error + 422-with-`detail` → `ServiceError`, registry helpers) and `demo/tests/test_summary.py` (clear-favourite vs. close-match phrasing). Test functions left untyped to match the repo's serving-test convention (`demo/tests/` is outside the mypy scope).
 
-**Gate.** `make check` → PASS (demo source in scope); `make test` → all green.
+**Deviation (within scope).** The plan specified `bandit -r … demo` relying on `[tool.bandit] exclude_dirs` to drop `demo/tests/`. Implemented as **`bandit -q -r src serving/app demo/*.py`** instead — same intent (scan demo source, skip tests) but it guarantees the `assert`-heavy test files are excluded (avoiding a `B101` failure whose dependence on `exclude_dirs` substring-matching was unverified) and stays consistent with the `mypy`/`vulture` invocations. `[tool.bandit] exclude_dirs` left unchanged.
 
 ---
 
