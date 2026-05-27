@@ -44,18 +44,21 @@ make check         # static-analysis gate (isort, black, flake8, mypy, bandit, v
 make test          # run the test suite
 make repro         # data -> features -> train (lands across Epics 02-04)
 make serve         # FastAPI inference API locally (uvicorn, hot reload)
-make up            # build + run the service in Docker (run `make data` first — see below)
-make down          # stop the Docker service
-make demo          # Streamlit demo (Epic 06)
+make demo          # Streamlit demo locally (calls a service on :8000 — run `make serve` first)
+make up            # build + run the service + demo in Docker (run `make data` first — see below)
+make down          # stop the Docker stack
 ```
 
 Run `make help` for the full target list.
 
-The Docker image is **data-free**: it bakes in the frozen `models/v1.*` but mounts the master
-matches table read-only from `./data`, so run `make data` (which writes
-`data/processed/matches.parquet`) before `make up`. The published host port defaults to `8000`;
-override it with `MATCHODDS_SERVE_PORT`. Once up, the contract lives at `POST /predict`, with
-Swagger at `/docs`.
+`make up` brings up **both** the inference service and the Streamlit demo. The serving image is
+**data-free**: it bakes in the frozen `models/v1.*` but mounts the master matches table read-only
+from `./data`, so run `make data` (which writes `data/processed/matches.parquet`) before `make up`.
+The service publishes host port `8000` (override with `MATCHODDS_SERVE_PORT`) — `POST /predict`, with
+Swagger at `/docs` — and the demo publishes `8501` (override with `MATCHODDS_DEMO_PORT`) at
+`localhost:8501`. The demo image is data- **and** model-free: it reaches the service over the compose
+network at `http://serving:8000` (`MATCHODDS_SERVICE_URL`). For a local run, `make demo` instead
+points at `http://127.0.0.1:8000`, so it needs `make serve` (or `make up`) running.
 
 ## Repository
 

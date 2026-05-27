@@ -1,6 +1,7 @@
-# Local-only inference service (no cloud hosting in this repo). `make up` builds + runs it.
-# The image is data-free: the master matches table is mounted read-only from ./data, so
-# `make data` must have produced data/processed/matches.parquet before `make up`.
+# Local-only stack (no cloud hosting in this repo): `make up` builds + runs the inference service
+# and the Streamlit demo together. The serving image is data-free — the master matches table is
+# mounted read-only from ./data, so `make data` must have produced data/processed/matches.parquet
+# before `make up`. The demo is data- and model-free and reaches serving over the compose network.
 services:
   serving:
     build:
@@ -14,3 +15,17 @@ services:
       MATCHODDS_ENVIRONMENT: docker
     volumes:
       - ./data:/app/data:ro
+
+  demo:
+    build:
+      context: .
+      dockerfile: demo/Dockerfile
+    image: match-odds-demo
+    depends_on:
+      - serving
+    ports:
+      # Host port (override with MATCHODDS_DEMO_PORT) -> the container's fixed 8501.
+      - "${MATCHODDS_DEMO_PORT:-8501}:8501"
+    environment:
+      # Reach the serving container over the compose network (not 127.0.0.1).
+      MATCHODDS_SERVICE_URL: http://serving:8000

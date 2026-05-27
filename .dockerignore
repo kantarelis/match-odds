@@ -7,12 +7,13 @@ venv
 # Data is mounted at runtime, never baked into the image.
 data/
 
-# Not needed to serve.
+# Not needed by either image. demo/ is COPYed by the demo image (so it is NOT excluded), but its
+# tests are; the serving image never COPYs demo/, so it is unaffected by demo/ being in the context.
 notebooks/
-demo/
 docs/
 tests/
 serving/tests/
+demo/tests/
 
 # Caches / build / coverage / local env.
 __pycache__/
