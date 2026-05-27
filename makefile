@@ -126,7 +126,7 @@ up:
 down:
 	docker compose down
 demo:
-	@echo "make demo — not implemented until Epic 06 (Streamlit demo)."
+	$(PY) -m streamlit run demo/app.py $(if $(MATCHODDS_DEMO_PORT),--server.port=$(MATCHODDS_DEMO_PORT))
 nb-run:
 	@if ls notebooks/*.ipynb >/dev/null 2>&1; then \
 		for nb in notebooks/*.ipynb; do \
