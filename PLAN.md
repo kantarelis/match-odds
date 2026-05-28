@@ -13,7 +13,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 1 | **Demo polish** — drop the Deploy button (keep the hamburger menu) + remove the "Made with Streamlit" footer + restore the H / D / A bar-chart order | ✅ Done | — |
 | 2 | `docs/evaluation.md` — temporal-CV protocol + metric tables (recomputable via `make train`) + a link to `notebooks/02_modeling.ipynb` for reliability diagrams | ✅ Done | — |
 | 3 | `docs/model_card.md` — intended use, data sources, metrics, calibration story, limitations, ethics | ✅ Done | — |
-| 4 | `docs/architecture.md` — notebook → package → service data-flow diagram (Mermaid) + the leakage / determinism / train-serve-skew invariants | ⬜ Not started | — |
+| 4 | `docs/architecture.md` — notebook → package → service data-flow diagram (Mermaid) + the leakage / determinism / train-serve-skew invariants | ✅ Done | — |
 | 5 | `README.md` polish pass + committed demo screenshot + fresh-clone `make repro` reproducibility verification | ⬜ Not started | — |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
@@ -98,17 +98,21 @@ Sections, in order:
 
 ---
 
-## Task 4 — `docs/architecture.md`: data-flow diagram + invariants
+## Task 4 — `docs/architecture.md`: data-flow diagram + invariants ✅
 
-**Scope (files to touch).**
-- `docs/architecture.md` (new): one *Diagram* section with a Mermaid flowchart of `raw CSVs → matches.parquet → features.parquet → models/v1.joblib → serving API → demo`; one *Layers* section that names each Python module the diagram references (so a reader can click straight from a box to the code); one *Invariants* section listing the three load-bearing rules in plain language — *No leakage* (`features(date_cutoff)` only reads strictly-earlier matches; `TimeOrderedSplit`; the Epic-06.5 hold-out calibrator), *No train-serve skew* (serving rebuilds features through the same `matchodds.features.pipeline.features`; `Inference._guard_no_skew` fails fast at startup if the feature columns drift), *Determinism* (every estimator / splitter / calibrator takes `settings.random_seed`; `make repro` reproduces the metadata metrics).
+**Outcome.** Added `docs/architecture.md` (128 lines, markdown-only). Three top-level sections matching the plan plus a short cross-link footer:
 
-**Acceptance criteria.**
-- `make check` + `make test` green.
-- The Mermaid diagram renders correctly when previewed on GitHub.
-- Every box in the diagram maps to a real file path stated in the *Layers* section.
+- **Data flow.** Inline Mermaid `flowchart TD` showing the full chain `football-data.co.uk → data/raw/ → matches.parquet → features.parquet → models/v1.joblib + metadata → serving.app (POST /predict) → demo.app (Streamlit)`. Edges labelled with the `make` target and the responsible `matchodds.*` module. **Dotted arrow** from `matches.parquet` into the serving box explicitly labels the train-serve equivalence (`matchodds.features.pipeline.features(date_cutoff)`). Notebooks shown as read-only consumers (dotted in) so the reader sees they narrate but never serve. Colour-classed stores / code / external nodes (renders on GitHub).
+- **Layers — every box → real code.** Eight-row table mapping each diagram node to its module path and one-line role. Modeling row cites the four bake-off candidates separately (`logistic.py` / `xgboost_model.py` / `dixon_coles.py` / `baselines.py`) plus `cv.py` / `metrics.py` / `calibration.py` so a reader can click straight to any single piece. Every link target verified against the live tree.
+- **Invariants.** Three subsections in plain language, each with the specific code-level enforcement points:
+  - *No leakage* — `features(date_cutoff)`'s pre-match-before-update ordering + `TimeOrderedSplit` + the Epic-06.5 hold-out calibrator.
+  - *No train-serve skew* — `Inference.predict` calling the same `pipeline.features(...)` that `train.run(...)` consumes via `pipeline.build(...)`, plus `Inference._guard_no_skew` fail-fast at startup if the feature columns drift.
+  - *Determinism* — `settings.random_seed = 42` flowing into every estimator / splitter / calibrator; XGBoost `n_jobs=1`; two-run reproducibility verified at Epic 06.5 Task 2. Honest caveat boxquoted: `make repro` reproduces the **metric scores** in the metadata, not necessarily the pickled bytes (which can vary across joblib / scikit-learn pickle-format revisions).
+- **Where this comes from.** Cross-links to `docs/history/`, `docs/model_card.md`, `docs/evaluation.md`, `docs/feature-pipeline.md`.
 
-**Gate.** `make check` → PASS · `make test` → green.
+**Deviations.** None from the plan spec. One in-flight self-catch worth noting: an initial `_guard_no_skew` link mistakenly pointed at `../src/matchodds/app/inference.py` (a path that doesn't exist) instead of `../serving/app/inference.py`; caught on a re-read of the file and fixed before stopping. No other broken links — verified all targets against the live tree.
+
+**Gate.** `make check` → PASS · `make test` → 155 passed.
 
 ---
 
