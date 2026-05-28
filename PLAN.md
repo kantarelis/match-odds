@@ -11,7 +11,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | Task | Description | Status | Commit |
 |------|-------------|--------|--------|
 | 1 | **Demo polish** — drop the Deploy button (keep the hamburger menu) + remove the "Made with Streamlit" footer + restore the H / D / A bar-chart order | ✅ Done | — |
-| 2 | `docs/evaluation.md` — temporal-CV protocol + metric tables (recomputable via `make train`) + a link to `notebooks/02_modeling.ipynb` for reliability diagrams | ⬜ Not started | — |
+| 2 | `docs/evaluation.md` — temporal-CV protocol + metric tables (recomputable via `make train`) + a link to `notebooks/02_modeling.ipynb` for reliability diagrams | ✅ Done | — |
 | 3 | `docs/model_card.md` — intended use, data sources, metrics, calibration story, limitations, ethics | ⬜ Not started | — |
 | 4 | `docs/architecture.md` — notebook → package → service data-flow diagram (Mermaid) + the leakage / determinism / train-serve-skew invariants | ⬜ Not started | — |
 | 5 | `README.md` polish pass + committed demo screenshot + fresh-clone `make repro` reproducibility verification | ⬜ Not started | — |
@@ -58,18 +58,21 @@ CI-side reproducibility automation (would need docker-in-docker or significant C
 
 ---
 
-## Task 2 — `docs/evaluation.md`: CV protocol + metric tables
+## Task 2 — `docs/evaluation.md`: CV protocol + metric tables ✅
 
-**Scope (files to touch).**
-- `docs/evaluation.md` (new): sections in this order — *CV protocol* (`TimeOrderedSplit`, forward-chained, never a random split, see `src/matchodds/modeling/cv.py`); *Metrics* (log-loss + Brier as primary proper scoring rules, accuracy reported but never optimised, per CLAUDE.md → *ML / Modeling Discipline*); *Bake-off* (a table of mean-CV log-loss / Brier / accuracy / `deployable` for baseline / logistic / xgboost / dixon_coles, exactly the four rows in `models/v1.metadata.json["models"]`); *Calibration* (one paragraph on the Epic 06.5 hold-out / prefit construction; reference the in-notebook reliability diagrams in `notebooks/02_modeling.ipynb`); *Reproducibility* (one paragraph: `make repro` regenerates the artifact and the metric scores deterministically from the pinned data version).
-- Metric numbers in the bake-off table come from the current `models/v1.metadata.json` (Task-2 logistic 0.9945 log-loss / 0.5930 Brier etc.) and are explicitly marked as *"current as of `<created_at>` — re-check via `cat models/v1.metadata.json`"* so the doc has a built-in honesty marker against drift.
+**Outcome.** Added `docs/evaluation.md` (91 lines, markdown-only), matching the tone and structure of the existing `docs/feature-pipeline.md`. Five sections in plan order:
 
-**Acceptance criteria.**
-- `make check` + `make test` green (markdown-only).
-- The bake-off table values match the current `v1.metadata.json` exactly (verify before writing).
-- The doc references `notebooks/02_modeling.ipynb` for reliability diagrams rather than committing PNGs.
+- **CV protocol — strictly temporal.** `TimeOrderedSplit` semantics, 5 folds, never random; calibration's holdout is strictly later than the base estimator's training window so leakage is excluded at both levels. Inline link to `src/matchodds/modeling/cv.py`.
+- **Metrics — proper scoring rules first.** Log-loss + Brier primary; accuracy reported but **never optimised** (quoting CLAUDE.md → *ML / Modeling Discipline*); bookmaker baseline scored as benchmark, never shipped because the serving request carries no closing odds. Link to `metrics.py`.
+- **Bake-off — current artifact.** Built-in honesty marker (*"current as of `2026-05-28` — re-check via `cat models/v1.metadata.json` or `make repro`"*). Data version (20,294 matches, 2016-08-12 → 2026-05-21, seed 42, 5 folds) plus the four-row table with exact numbers from the current metadata (baseline 0.963294 / logistic 0.994531 [bold, selected] / xgboost 1.002992 / dixon_coles 1.002473 log-loss). One-paragraph framing notes the baseline beats every deployable model — *"this is the expected (and honest) result on closing odds, which already encode the market's probability estimate"*.
+- **Calibration — hold-out (prefit), Epic 06.5.** Describes the `FrozenEstimator` + `CalibratedClassifierCV` construction, the sigmoid-vs-isotonic `auto` path on a temporal sub-split of the holdout itself, Dixon-Coles being reliability-checked rather than wrapped. Boxquoted *"Why this matters (the Epic 06.5 fix)"* sub-section with the AEK(H)-vs-PAOK regression case (`0.336 → 0.434`) and the metric improvements (`log-loss 0.9989 → 0.9945`, `Brier 0.5954 → 0.5930`). Points readers to `notebooks/02_modeling.ipynb` for reliability diagrams — kept out of `docs/` so they cannot go stale relative to the shipped artifact.
+- **Reproducibility.** `make repro` is deterministic from the pinned data version; two consecutive `make train` runs produce identical metrics (verified at Epic 06.5 Task 2). Cross-links `docs/history/` for the per-epic decision trail.
 
-**Gate.** `make check` → PASS · `make test` → green.
+No PNGs committed — reliability charts stay in the notebook (PLAN Decision 2 holds).
+
+**Deviations.** None — sections, table, and cross-links match the plan exactly.
+
+**Gate.** `make check` → PASS · `make test` → 155 passed.
 
 ---
 
