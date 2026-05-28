@@ -10,7 +10,7 @@ from matchodds.config import Settings, settings
 from matchodds.data import sources, teams
 from matchodds.data.schema import Match
 from matchodds.features import pipeline
-from matchodds.modeling import cv, metrics
+from matchodds.modeling import betting, cv, metrics
 from serving.app.schemas import EnvResponse, HealthResponse, OutcomeProbabilities, PredictRequest
 
 __metadata__.__repository__
@@ -66,6 +66,13 @@ metrics.reliability_curve
 # modeling.cv — get_n_splits exists only for the scikit-learn cv protocol (called by sklearn at
 # runtime, never by our src). TimeOrderedSplit + split now have real consumers in train.py / calibration.
 cv.TimeOrderedSplit.get_n_splits
+
+# modeling.betting — edge + backtest are consumed by the Epic 07 betting-edge notebook (Task 3);
+# vulture only scans src / serving / demo / the allowlist itself, so a notebook-only consumer still
+# needs listing. implied_probabilities is called by edge() and expected_value is called by backtest(),
+# so neither needs an entry here.
+betting.edge
+betting.backtest
 
 # serving.app.schemas — the HTTP contract. Fields are read by the inference layer + API views
 # (Tasks 2-4) and by FastAPI's serializer at runtime; remove entries as their consumers land.
