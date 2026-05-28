@@ -1,0 +1,10 @@
+# Streamlit config — kept inside demo/ so the Dockerfile's `COPY demo/ ./demo/` ships it with the
+# image and `make up` picks it up automatically (no extra mount).
+#
+# toolbarMode = "viewer" hides the developer options (Deploy button, Rerun, Clear cache) from both
+# the top-right toolbar and the hamburger menu, while **keeping the menu itself** with the viewer
+# options end users actually find useful (print, record screencast, theme toggle, About). The
+# alternative "minimal" hides the menu entirely too, which strips functionality this portfolio demo
+# is happy to keep available. Supported since Streamlit 1.18; safe on the pinned 1.57.0.
+[client]
+toolbarMode = "viewer"

@@ -21,7 +21,7 @@ See [`CLAUDE.md`](CLAUDE.md) → *Development Methodology* for the full Epic →
 | 06 | Streamlit Demo App                           | —          | ✅ Done        | `implement-streamlit-demo-app` | `151efac..<close-out>` |
 | 06.5 | Calibration Fix & Model Re-selection       | —          | ✅ Done        | `recalibration-model-quality` | `76dd654..<close-out>` |
 | 07 | Betting-Edge Analysis (optional appendix)    | 2.7        | ✅ Done        | `implement-betting-edge-analysis` | `62b8b08..<close-out>` |
-| 08 | Documentation, Model Card & Reproducibility  | 2.8, 2.9   | ⬜ Not started | `epic-08-docs`      | —            |
+| 08 | Documentation, Model Card & Reproducibility  | 2.8, 2.9   | ✅ Done        | `finish-documentation-model-card-and-reproducibility` | `88711df..<close-out>` |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started. Branch names are suggestions; the user creates branches.
 
