@@ -19,6 +19,7 @@ See [`CLAUDE.md`](CLAUDE.md) → *Development Methodology* for the full Epic →
 | 04 | Modeling, Evaluation & Calibration           | 2.4, 2.5   | ✅ Done        | `implement-modeling-evaluation-and-calibration` | `bf99c19..5ea5d91` |
 | 05 | FastAPI Inference Service (Dockerised)       | 2.6        | ✅ Done        | `implement-fastapi-inference-service` | `d298224..<ci-fix>` |
 | 06 | Streamlit Demo App                           | —          | ✅ Done        | `implement-streamlit-demo-app` | `151efac..<close-out>` |
+| 06.5 | Calibration Fix & Model Re-selection       | —          | ✅ Done        | `recalibration-model-quality` | `76dd654..<close-out>` |
 | 07 | Betting-Edge Analysis (optional appendix)    | 2.7        | ⬜ Not started | `epic-07-betting`   | —            |
 | 08 | Documentation, Model Card & Reproducibility  | 2.8, 2.9   | ⬜ Not started | `epic-08-docs`      | —            |
 
@@ -132,6 +133,26 @@ See [`CLAUDE.md`](CLAUDE.md) → *Development Methodology* for the full Epic →
 
 ---
 
+## Epic 06.5 — Calibration Fix & Model Re-selection
+
+**Goal.** Fix the calibration step that over-flattens probabilities and **inverts home advantage** in near-even matchups (found while exercising the Epic 06 demo), and re-freeze the artifact. Replace the ensemble-over-temporal-folds `CalibratedClassifierCV` with a **leakage-free hold-out (prefit)** calibration that preserves sharpness, re-run the proper-scoring model selection (recalibrated LR + XGBoost vs naturally-calibrated Dixon-Coles), and re-freeze `models/v1.joblib` — judged on log-loss/Brier with a home-advantage sanity guardrail.
+
+**Background.** The deployed logistic model (Epic 04) is calibrated via `CalibratedClassifierCV` over forward-chaining temporal folds (`ensemble=True` — the only mode compatible with non-partitioning temporal CV). That averages fold-subset submodels and sigmoid-squashes, flattening confident predictions toward the base rate — enough to reverse the real, data-confirmed home advantage (Greek big-4 derbies: 44% home / 25% away) for elite-vs-elite fixtures (AEK home-win **0.47 raw → 0.34 deployed**). A hold-out/prefit calibration restores the correct ordering in **both** mid-season and season-opener regimes, with no feature-pipeline change. `predict_proba` column order, label encoding, and the Elo/strength/form/h2h features were all verified correct — the defect is solely in the calibration construction.
+
+**Scope.**
+- `matchodds.modeling.calibration`: replace the ensemble-temporal `CalibratedClassifierCV` with leakage-free hold-out (prefit) calibration (base fit on the earlier temporal slice, calibrator on a strictly-later held-out slice via `FrozenEstimator`); keep sigmoid/isotonic auto-selection, the `[H, D, A]` contract, determinism, and the small-data safe fallback; preserve the `calibrate()` signature so `train.py` is unchanged.
+- `matchodds.modeling.train`: re-run the proper-scoring selection across recalibrated LR + XGBoost + Dixon-Coles; re-freeze `models/v1.joblib` + `v1.metadata.json` (new metrics, calibration method, data version, library versions).
+- Tests: rewrite the calibration mechanics test for the hold-out construction; add a home-advantage no-inversion guard.
+- `notebooks/02_modeling.ipynb`: refresh the calibration narrative + reliability diagrams; stays green under nb-run/nb-lint.
+
+**Depends on.** Epic 04 (the modeling/calibration code + artifact). Slots between Epic 06 and Epic 07 as a model-quality fix.
+
+**Exit criteria.** `make repro` deterministically reproduces the re-frozen `models/v1.joblib`; log-loss/Brier do not regress versus the previous artifact (ideally improve); the shipped model gives `P(home) > P(away)` for a clear home favourite (home-advantage regression passes); `make check` + `make test` + nb-lint/nb-run green.
+
+**Out of scope.** Feature-pipeline changes (the season-scoped strength reset is untouched — the calibration fix resolves the inversion in both regimes); serving-layer changes (frozen); the demo (unchanged); a model-version bump (the re-frozen artifact stays `v1.joblib`). A latent `TimeOrderedSplit.split(groups=…)` gap (blocks `ensemble=False`/`cross_val_predict`) is not exercised by the hold-out approach and is left for a future cleanup.
+
+---
+
 ## Epic 07 — Betting-Edge Analysis (optional appendix)
 
 **Goal.** Retrospective, historical-only comparison of model probabilities vs. bookmaker closing odds, identifying positive-EV bets on past data. **Optional — schedulable or skippable.**
@@ -166,5 +187,6 @@ See [`CLAUDE.md`](CLAUDE.md) → *Development Methodology* for the full Epic →
 ## Sequencing notes
 
 - Epics are strictly ordered 01 → 08; each depends on the prior data/feature/model artifacts. Epic 07 is optional and can be deferred or skipped.
+- Epic 06.5 is an inserted model-quality fix (calibration) found while exercising the Epic 06 demo; it re-freezes `models/v1.joblib` and slots between 06 and 07 without disturbing the (frozen) serving layer or the demo.
 - The serving layer (Epic 05) deliberately mirrors `quake-feed`'s FastAPI + Docker patterns — build that repo first so this is muscle memory.
 - One `PLAN.md` at a time at the repo root; archive to `docs/history/` before drafting the next.

@@ -2,16 +2,21 @@
 
 A classifier can rank outcomes correctly yet be over- or under-confident; calibration maps its raw
 scores to probabilities that match observed frequencies (CLAUDE.md -> "Calibration is part of the
-model"). :func:`calibrate` wraps a discriminative model's underlying scikit-learn estimator in
-``CalibratedClassifierCV`` over the **temporal** folds from :mod:`matchodds.modeling.cv` (never random
-folds), so the calibrator only ever sees data held out from the estimator's training — no leakage. The
-result stays an :class:`~matchodds.modeling.base.OutcomeModel`, emitting ``[H, D, A]`` via the same
-class-scatter as the wrapped models.
+model"). :func:`calibrate` uses the **final** fold of a :class:`TimeOrderedSplit` as a temporal
+hold-out: the underlying scikit-learn estimator is fit on the fold's expanding-window training slice,
+then wrapped in :class:`~sklearn.frozen.FrozenEstimator` and handed to
+``CalibratedClassifierCV``, which fits the calibration regressor on the strictly-later held-out tail.
+The calibrator therefore only ever sees data dated **after** the base's training window — leakage-free
+by construction. (The previous ``CalibratedClassifierCV(cv=temporal_split)`` ensemble averaged
+fold-subset submodels and sigmoid-squashed confident predictions, flattening enough to invert the
+real home advantage on near-even derbies — Epic 06.5.) The result stays an
+:class:`~matchodds.modeling.base.OutcomeModel`, emitting ``[H, D, A]`` via the same class-scatter as
+the wrapped models.
 
-``method="auto"`` picks sigmoid (Platt) vs isotonic by mean held-out log-loss under **nested** temporal
-CV: the inner calibration split is rebuilt from each outer training fold's own dates, so both levels
-stay strictly forward-chaining. An outer fold whose training slice has too few distinct dates to form
-an inner split is skipped; if none are usable, selection falls back to sigmoid (robust on small data).
+``method="auto"`` picks sigmoid (Platt) vs isotonic by held-out log-loss on a **temporal sub-split of
+the holdout itself** — fit each calibrator on the holdout's earlier portion, score on its strictly
+later tail, pick the winner, refit on the full holdout. If the holdout is too small to sub-split,
+selection falls back to sigmoid (robust on small data).
 
 Dixon-Coles is generative and naturally calibrated — it is reliability-*checked* (Task 10), never
 wrapped (PLAN Decision 5), so it is not a target of this function.
@@ -25,6 +30,7 @@ import numpy as np
 import pandas as pd
 from sklearn.base import clone
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.frozen import FrozenEstimator
 
 from matchodds.config import settings
 from matchodds.modeling import base, metrics
@@ -62,21 +68,39 @@ def _scatter(calibrated: Any, features: base.FloatArray) -> base.FloatArray:
     return proba
 
 
-def _fit_calibrated(estimator: object, table: pd.DataFrame, method: str, cv: TimeOrderedSplit) -> Any:
-    calibrated = CalibratedClassifierCV(clone(estimator), method=method, cv=cv)
-    calibrated.fit(_features(table), metrics.encode_labels(table["result"]))
+def _fit_base(estimator: object, train_table: pd.DataFrame) -> Any:
+    """Clone the estimator (parameters only) and fit on the training slice; return the fitted base."""
+    fitted = clone(estimator)
+    fitted.fit(_features(train_table), metrics.encode_labels(train_table["result"]))
+    return fitted
+
+
+def _fit_calibrator(frozen_base: Any, holdout_table: pd.DataFrame, method: str) -> Any:
+    """Fit ``CalibratedClassifierCV`` on the held-out slice using the already-fitted base.
+
+    ``FrozenEstimator`` keeps the base pre-trained (re-``fit`` is a no-op) so the calibrator sees the
+    base's predictions on the whole holdout. A single-fold ``cv`` (all indices in both train and test)
+    is passed explicitly: it bypasses ``CalibratedClassifierCV``'s default ``StratifiedKFold`` and its
+    per-fold class-diversity check — which is meaningless under a frozen base — and lets a tiny / class-
+    imbalanced holdout still calibrate.
+    """
+    features = _features(holdout_table)
+    labels = metrics.encode_labels(holdout_table["result"])
+    single_fold = [(np.arange(features.shape[0]), np.arange(features.shape[0]))]
+    calibrated = CalibratedClassifierCV(FrozenEstimator(frozen_base), method=method, cv=single_fold)
+    calibrated.fit(features, labels)
     return calibrated
 
 
 def safe_calibration_cv(table: pd.DataFrame) -> TimeOrderedSplit | None:
     """A temporal calibration split valid for ``table``, or ``None`` if it is too small / skewed.
 
-    Capped by the rarest class's count (``CalibratedClassifierCV`` requires at least ``n_splits``
-    examples per class) and by the number of distinct dates. Then every fold's **training** portion
-    must contain all classes — an expanding-window fold whose early dates miss an outcome would fit a
-    single-class base estimator and raise — so a too-skewed slice yields ``None``. Used for the inner
-    split of method selection and (by ``train.py``) for the per-fold / final calibration folds, so a
-    cold-start or class-skewed slice falls back to the raw estimator rather than crashing.
+    Capped by the rarest class's count (``CalibratedClassifierCV`` needs at least ``n_splits`` examples
+    per class) and by the number of distinct dates. Then every fold's **training** portion must contain
+    all classes — an expanding-window fold whose early dates miss an outcome would fit a single-class
+    base estimator and raise — and the **final fold's hold-out** portion must also carry every class
+    so the calibrator covers all three outcomes. Used by ``train.py`` to derive the calibration cv;
+    a cold-start or class-skewed slice falls back to the raw estimator rather than crashing.
     """
     labels = metrics.encode_labels(table["result"])
     n_classes = len(metrics.CLASSES)
@@ -86,27 +110,36 @@ def safe_calibration_cv(table: pd.DataFrame) -> TimeOrderedSplit | None:
     if n_splits < 2:
         return None
     splitter = TimeOrderedSplit(table["date"], n_splits=n_splits)
-    if any(len(np.unique(labels[train_idx])) < n_classes for train_idx, _ in splitter.split()):
+    splits = list(splitter.split())
+    if any(len(np.unique(labels[train_idx])) < n_classes for train_idx, _ in splits):
+        return None
+    _, last_test_idx = splits[-1]
+    if len(np.unique(labels[last_test_idx])) < n_classes:
         return None
     return splitter
 
 
-def _select_method(estimator: object, table: pd.DataFrame, cv: TimeOrderedSplit) -> str:
-    """Pick sigmoid vs isotonic by mean held-out log-loss under nested temporal CV."""
-    scores: dict[str, list[float]] = {method: [] for method in _METHODS}
-    for train_idx, test_idx in cv.split():
-        train_table = table.iloc[train_idx]
-        inner = safe_calibration_cv(train_table)
-        if inner is None:
-            continue
-        test_table = table.iloc[test_idx]
-        y_test = metrics.encode_labels(test_table["result"])
-        test_features = _features(test_table)
-        for method in _METHODS:
-            proba = _scatter(_fit_calibrated(estimator, train_table, method, inner), test_features)
-            scores[method].append(metrics.log_loss(y_test, proba))
-    means = {method: float(np.mean(values)) for method, values in scores.items() if values}
-    return min(means, key=lambda method: means[method]) if means else _DEFAULT_METHOD
+def _select_method(frozen_base: Any, holdout_table: pd.DataFrame) -> str:
+    """Pick sigmoid vs isotonic by held-out log-loss on a **temporal sub-split of the holdout itself**.
+
+    Each method's calibrator is fit on the holdout's earlier sub-slice and scored on its strictly-later
+    sub-slice, preserving the forward-chaining discipline at the inner level. If the holdout is too
+    small for a valid sub-split, selection falls back to :data:`_DEFAULT_METHOD` (sigmoid).
+    """
+    inner = safe_calibration_cv(holdout_table)
+    if inner is None:
+        return _DEFAULT_METHOD
+    sub_train_idx, sub_test_idx = list(inner.split())[-1]
+    sub_train_table = holdout_table.iloc[sub_train_idx]
+    sub_test_table = holdout_table.iloc[sub_test_idx]
+    y_sub_test = metrics.encode_labels(sub_test_table["result"])
+    sub_test_features = _features(sub_test_table)
+    scores: dict[str, float] = {}
+    for method in _METHODS:
+        calibrator = _fit_calibrator(frozen_base, sub_train_table, method)
+        proba = _scatter(calibrator, sub_test_features)
+        scores[method] = metrics.log_loss(y_sub_test, proba)
+    return min(scores, key=lambda method: scores[method])
 
 
 class _CalibratedModel(base.OutcomeModel):
@@ -131,10 +164,17 @@ def calibrate(
     method: str = "auto",
     cv: TimeOrderedSplit,
 ) -> CalibratedOutcome:
-    """Calibrate a discriminative model over temporal folds; return a calibrated ``OutcomeModel``.
+    """Calibrate a discriminative model via a temporal hold-out; return a calibrated ``OutcomeModel``.
 
-    ``method`` is ``"sigmoid"``, ``"isotonic"``, or ``"auto"`` (choose by held-out log-loss). The
-    wrapped estimator is cloned, so the input model's fitted state — if any — is irrelevant.
+    The **final fold** of ``cv`` defines the split: the base is fit on the fold's training slice, and
+    the calibrator on the strictly-later hold-out slice (``FrozenEstimator`` + prefit pattern).
+    ``method`` is ``"sigmoid"``, ``"isotonic"``, or ``"auto"`` (chosen by held-out log-loss on a
+    temporal sub-split of the hold-out itself). The wrapped estimator is cloned, so the input model's
+    fitted state — if any — is irrelevant.
     """
-    chosen = _select_method(model.estimator, table, cv) if method == "auto" else method
-    return _CalibratedModel(_fit_calibrated(model.estimator, table, chosen, cv), chosen)
+    train_idx, holdout_idx = list(cv.split())[-1]
+    train_table = table.iloc[train_idx]
+    holdout_table = table.iloc[holdout_idx]
+    frozen_base = _fit_base(model.estimator, train_table)
+    chosen = _select_method(frozen_base, holdout_table) if method == "auto" else method
+    return _CalibratedModel(_fit_calibrator(frozen_base, holdout_table, chosen), chosen)
