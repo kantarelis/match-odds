@@ -12,7 +12,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 |------|-------------|--------|--------|
 | 1 | **Demo polish** — drop the Deploy button (keep the hamburger menu) + remove the "Made with Streamlit" footer + restore the H / D / A bar-chart order | ✅ Done | — |
 | 2 | `docs/evaluation.md` — temporal-CV protocol + metric tables (recomputable via `make train`) + a link to `notebooks/02_modeling.ipynb` for reliability diagrams | ✅ Done | — |
-| 3 | `docs/model_card.md` — intended use, data sources, metrics, calibration story, limitations, ethics | ⬜ Not started | — |
+| 3 | `docs/model_card.md` — intended use, data sources, metrics, calibration story, limitations, ethics | ✅ Done | — |
 | 4 | `docs/architecture.md` — notebook → package → service data-flow diagram (Mermaid) + the leakage / determinism / train-serve-skew invariants | ⬜ Not started | — |
 | 5 | `README.md` polish pass + committed demo screenshot + fresh-clone `make repro` reproducibility verification | ⬜ Not started | — |
 
@@ -76,18 +76,25 @@ No PNGs committed — reliability charts stay in the notebook (PLAN Decision 2 h
 
 ---
 
-## Task 3 — `docs/model_card.md`: intended use + ethics
+## Task 3 — `docs/model_card.md`: intended use + ethics ✅
 
-**Scope (files to touch).**
-- `docs/model_card.md` (new): standard model-card sections — *Model details* (logistic + sigmoid calibration via hold-out / prefit, seed, train date from metadata, library versions); *Intended use* (educational portfolio piece + a 1X2 probability service on six leagues); *Data* (football-data.co.uk only — pinned URL manifest, seasons, leagues; no scraping); *Features* (the 30 engineered columns in `feature_columns`, summarising the five accumulator families from `src/matchodds/features/`); *Metrics* (link `docs/evaluation.md` for the table — do not duplicate); *Calibration* (hold-out / prefit, Epic 06.5 fixed the home-advantage inversion); *Limitations* (out-of-scope leagues / teams; cold-start fixtures; an upset is still an upset; no in-play modelling); *Ethics / out-of-scope* (no live betting, no real-money use, no advice — restates CLAUDE.md's constraint); *Maintainer + provenance* (the metadata's data version + seed + library versions).
-- The *Out-of-scope* section explicitly names the betting-edge notebook (Epic 07) as historical / illustrative — so a reader who jumps from the README to the model card to the notebook sees the same disclaimer three times.
+**Outcome.** Added `docs/model_card.md` (134 lines, markdown-only). Structured per the Mitchell-et-al. (2019) standard so a recruiter can jump to a section by name. Numbers and library versions read straight from `models/v1.metadata.json` (re-checkable with `cat models/v1.metadata.json` / `make repro`).
 
-**Acceptance criteria.**
-- `make check` + `make test` green.
-- Sections match the canonical model-card structure (Mitchell et al., 2019) so a recruiter can scan them by name.
-- The ethics section is unambiguous about no-real-money framing.
+Sections, in order:
 
-**Gate.** `make check` → PASS · `make test` → green.
+- **Model details** — logistic + sigmoid (hold-out / prefit), trained `2026-05-28`, seed `42`, 5 CV folds, full library version list (numpy 2.4.6, pandas 2.3.3, scikit-learn 1.8.0, scipy 1.17.1, xgboost 2.1.4, joblib 1.5.3, Python 3.14), inline links to the relevant source modules.
+- **Intended use** — primary (educational portfolio piece showing notebook-to-service ML engineering), secondary (1X2 probability service via the FastAPI service / Streamlit demo), explicit "not intended for" pointer to *Limitations* + *Ethics*.
+- **Data** — single source (football-data.co.uk, pinned-URL manifest, no scraping); 20,294 matches across `2016-08-12 → 2026-05-21`; six leagues with per-league counts (EPL 3,790 · La Liga 3,790 · Serie A 3,790 · Ligue 1 3,476 · Bundesliga 3,060 · Greek SL 2,388); columns kept; explicit note that bookmaker odds are used by the baseline + Epic 07 only, never at inference time.
+- **Features (30 columns)** — five-row table mapping each accumulator family (Elo / Form / H2H / Venue strength / Season) to its columns and what it captures; cold-start NaN convention noted; cross-link to `docs/feature-pipeline.md` for the per-feature leakage proof.
+- **Metrics** — **does not duplicate** `docs/evaluation.md`'s table (drift avoidance per PLAN Decision 2-adjacent); summarises only the selection rule (log-loss on the deployable set) and the headline outcome.
+- **Calibration** — one paragraph on the Epic 06.5 hold-out / prefit construction; quotes the regression case (AEK(H) vs PAOK `0.336 → 0.434`) and the metric improvements; links the notebook for reliability diagrams.
+- **Limitations** — six bullets: out-of-scope leagues / teams; cold-start fixtures; calendar-day granularity (no kickoff times → same-day matches treated as one block); "upsets are upsets" (calibrated probability ≠ prediction); no in-play modelling; six leagues / ten seasons is itself a scope choice (no OOD applicability).
+- **Ethics / out of scope** — four bullets restating *no live betting / no real-money use / no advice* in three different framings; **explicitly names `notebooks/03_betting_edge.ipynb` as historical / illustrative only** and quotes its negative-ROI outcome (per PLAN Decision 6 — the disclaimer now hits the reader three times across README → model card → notebook); no bias audit was performed (with the reason given); no PII.
+- **Maintainer & provenance** — maintainer + repo link, refresh command (`make repro`), versioning policy (calibration-only fixes overwrite `v1.joblib` in place), pointer to `docs/history/`.
+
+**Deviations.** None — sections and content match the plan exactly. No duplication of `docs/evaluation.md`'s bake-off table; no committed images.
+
+**Gate.** `make check` → PASS · `make test` → 155 passed.
 
 ---
 
