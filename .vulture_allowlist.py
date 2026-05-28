@@ -67,11 +67,12 @@ metrics.reliability_curve
 # runtime, never by our src). TimeOrderedSplit + split now have real consumers in train.py / calibration.
 cv.TimeOrderedSplit.get_n_splits
 
-# modeling.betting — edge + expected_value are consumed by the Epic 07 backtest helper (Task 2) and
-# the betting-edge notebook (Task 3). implied_probabilities is already called by edge() so it does
-# not need to be listed.
+# modeling.betting — edge + backtest are consumed by the Epic 07 betting-edge notebook (Task 3);
+# vulture only scans src / serving / demo / the allowlist itself, so a notebook-only consumer still
+# needs listing. implied_probabilities is called by edge() and expected_value is called by backtest(),
+# so neither needs an entry here.
 betting.edge
-betting.expected_value
+betting.backtest
 
 # serving.app.schemas — the HTTP contract. Fields are read by the inference layer + API views
 # (Tasks 2-4) and by FastAPI's serializer at runtime; remove entries as their consumers land.

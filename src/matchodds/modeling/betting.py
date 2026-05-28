@@ -17,6 +17,7 @@ from __future__ import annotations
 import numpy as np
 
 from matchodds.modeling.base import FloatArray
+from matchodds.modeling.metrics import IntArray
 
 
 def _as_odds(odds: FloatArray) -> FloatArray:
@@ -63,3 +64,48 @@ def expected_value(model_prob: FloatArray, market_odds: FloatArray) -> FloatArra
     the model's edge **and** the size of the payout being offered.
     """
     return _as_probabilities(model_prob) * _as_odds(market_odds) - 1.0
+
+
+def backtest(
+    model_probs: FloatArray,
+    market_odds: FloatArray,
+    results: IntArray,
+    *,
+    edge_threshold: float = 0.0,
+    stake: float = 1.0,
+) -> dict[str, float | int]:
+    """Flat-stake positive-EV backtest summary on out-of-sample matches.
+
+    For each match, pick the outcome (H / D / A) with the largest :func:`expected_value`; place a
+    bet of size ``stake`` on it iff that EV is **strictly greater than** ``edge_threshold``. Ties in
+    the maximum EV are broken by lowest outcome index (numpy's ``argmax`` default — so H beats D,
+    D beats A). A match with no qualifying outcome contributes to ``n_matches`` but never to
+    ``n_bets``. Returns a numeric summary; the per-bet ledger is the caller's concern.
+
+    ``results`` is the encoded outcome per match (``H=0 / D=1 / A=2`` per
+    :data:`matchodds.modeling.metrics.CLASSES`). ``roi`` and ``win_rate`` are ``0.0`` when no bets
+    were placed (a "did nothing" strategy, not a divide-by-zero).
+    """
+    odds = _as_odds(market_odds)
+    labels = np.asarray(results, dtype=np.intp)
+    ev = expected_value(model_probs, odds)
+    picks = np.asarray(ev.argmax(axis=1), dtype=np.intp)
+    rows = np.arange(ev.shape[0], dtype=np.intp)
+    bet_mask = ev[rows, picks] > edge_threshold
+    win_mask = bet_mask & (picks == labels)
+    n_matches = int(ev.shape[0])
+    n_bets = int(bet_mask.sum())
+    n_wins = int(win_mask.sum())
+    total_staked = float(stake) * n_bets
+    total_return = float(stake) * float(odds[win_mask, picks[win_mask]].sum())
+    pnl = total_return - total_staked
+    return {
+        "n_matches": n_matches,
+        "n_bets": n_bets,
+        "n_wins": n_wins,
+        "total_staked": total_staked,
+        "total_return": total_return,
+        "pnl": pnl,
+        "roi": pnl / total_staked if total_staked > 0 else 0.0,
+        "win_rate": n_wins / n_bets if n_bets > 0 else 0.0,
+    }
