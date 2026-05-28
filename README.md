@@ -192,8 +192,9 @@ Architectural and operational deep-dives live in [`docs/`](docs/):
 | Feature pipeline (per-feature leakage proof) | [`docs/feature-pipeline.md`](docs/feature-pipeline.md) |
 | Per-epic plans + outcome records | [`docs/history/`](docs/history/) |
 
-Repo conventions and the development workflow are documented in [`CLAUDE.md`](CLAUDE.md); the
-epic-level roadmap lives in [`MASTER_PLAN.md`](MASTER_PLAN.md).
+Repo conventions and the development workflow are documented in [`CLAUDE.md`](CLAUDE.md). The
+per-epic plan + outcome records that built the repo are archived under
+[`docs/history/`](docs/history/).
 
 
 <a id="tech-stack"></a>

@@ -10,7 +10,7 @@ The artifact is a **notebook-to-service** pipeline: exploratory work lives in `n
 
 **Deployment model:** local-only via Docker / `make`. No cloud hosting in this repo (deferred). The serving image and the Streamlit demo both run locally.
 
-> **Greenfield note.** This repo is being built epic-by-epic per [`MASTER_PLAN.md`](MASTER_PLAN.md). The directory tree below is the **target** architecture the epics build toward — not every path exists yet. When you scaffold or extend, conform to this layout.
+> **Status note.** The repo is feature-complete; the per-epic plan + outcome records that built it live under [`docs/history/`](docs/history/) (one file per epic). The directory tree below is the live layout — every path exists.
 
 ## Quick Commands
 
@@ -112,8 +112,8 @@ tests/                       # Unit tests for the src/matchodds package
 └── conftest.py
 
 .github/workflows/ci.yml     # GitHub Actions: make check + make test + nb-lint + nb-run smoke
-MASTER_PLAN.md               # Epic-level roadmap (epics only, with status)
-PLAN.md                      # The CURRENT epic broken into one-commit tasks (tracked in git)
+PLAN.md                      # Only present while an epic is in progress (one-commit-sized tasks)
+docs/history/                # Archived per-epic plans + outcome records (epic-NN-<slug>.md)
 makefile                     # All dev entrypoints
 pyproject.toml / setup.cfg   # Tool configs (black, isort, flake8, mypy, bandit, vulture, nbqa)
 pytest.ini
@@ -137,10 +137,9 @@ README.md                    # Does 90% of the recruiter work (per-role "what th
 
 This is the **default workflow for every epic** in this repo. The workflow exists so the user retains **100% ownership** of the codebase and full mental model of every change that lands.
 
-**The two-document model:**
+**The `PLAN.md` document:**
 
-- **`MASTER_PLAN.md`** (repo root) — lists **epics only**, each with status. Never lists individual tasks.
-- **`PLAN.md`** (repo root, **tracked in git**) — created per epic; breaks the active epic into ordered **tasks**. **Each task is exactly one commit.** Only one `PLAN.md` lives at the root at a time — it always describes the currently active epic. Tracking it in git gives every epic a permanent planned-vs-shipped record next to the code it produced. Each epic is implemented on its own feature branch.
+- **`PLAN.md`** (repo root, **tracked in git**) — created per epic; breaks the active epic into ordered **tasks**. **Each task is exactly one commit.** Only one `PLAN.md` lives at the root at a time — it always describes the currently active epic. Tracking it in git gives every epic a permanent planned-vs-shipped record next to the code it produced. Each epic is implemented on its own feature branch. On completion the file is archived to `docs/history/epic-NN-<slug>.md`. (The repo is currently feature-complete and has no active `PLAN.md`; the history of past epics is in [`docs/history/`](docs/history/).)
 
 **Absolute git rule (no exceptions):**
 
@@ -153,7 +152,7 @@ This is the **default workflow for every epic** in this repo. The workflow exist
 
 **The loop:**
 
-1. **Pick the next epic** from `MASTER_PLAN.md`. Move its status to In progress. The user creates the feature branch.
+1. **Pick the next epic.** The user creates the feature branch.
 2. **Draft `PLAN.md`.** Claude breaks the epic into ordered tasks. Each task spec includes: scope (files to touch), acceptance criteria, and the `make check` / `make test` expectations. Each task must be small enough to be **one self-contained commit**. **Claude then STOPS** and waits for the user to read the plan. The user may ask for revisions (re-split tasks, reorder, reword, add/remove). Only when the user explicitly says to start (e.g. "proceed with task 1", "let's start") does Claude touch code.
 3. **Implement exactly one task.** When the user prompts for a specific task ("do task N", "next task", "proceed"), Claude implements **only that task**, runs `make check` + `make test` (and `make nb-lint` / `make nb-run` when notebooks changed), and stops. Output at the end:
    - A short summary of what changed and which files.
@@ -162,7 +161,7 @@ This is the **default workflow for every epic** in this repo. The workflow exist
 4. **User reviews, commits, pushes.** Claude does nothing during this window. Do not poll, do not "check if it's pushed", do not run `git status` proactively to nag.
 5. **User prompts the next task.** Claude moves to the next task. Repeat from step 3 until the epic's tasks are exhausted.
 6. **Plan update on request.** When the user asks ("update PLAN.md"), Claude updates the progress table (mark Done + commit hash if the user supplied it) and rewrites the per-task section as an **outcome record** (what actually happened, deviations, why).
-7. **Epic complete.** When all tasks are done, the user asks Claude to close out the epic: mark it Done in `MASTER_PLAN.md` with the commit range, then **archive `PLAN.md` to `docs/history/epic-NN-<slug>.md`** in a single rename commit. The root `PLAN.md` slot is now free for the next epic's draft.
+7. **Epic complete.** When all tasks are done, the user asks Claude to close out the epic: **archive `PLAN.md` to `docs/history/epic-NN-<slug>.md`** in a single rename commit. The root `PLAN.md` slot is now free for the next epic's draft.
 
 **Deviation rule.** Only **major / structural** deviations from `PLAN.md` (e.g. a different split layout, rejecting a planned pattern, adding/removing a task, changing a task's scope mid-implementation) require Claude to stop and ask before writing code. Cosmetic decisions inside a planned task scope (helper grouping, file naming inside a planned folder, plot styling in a notebook) are at Claude's discretion and get recorded in the post-task outcome update.
 
@@ -240,9 +239,9 @@ Team-name spellings vary across seasons — `matchodds.data.teams` holds the can
 - **CI**: GitHub Actions (`make check` + `make test` + notebook lint + notebook smoke-run)
 - **Static analysis**: isort, black, flake8, mypy, bandit, vulture, nbqa
 
-## Project Roadmap
+## Project history
 
-See [`MASTER_PLAN.md`](MASTER_PLAN.md) for the epic-level breakdown and current status. The currently active epic has its own `PLAN.md` at the repo root with one-commit-sized tasks; completed epics' plans are archived under [`docs/history/`](docs/history/).
+The repo is feature-complete; the per-epic plan + outcome records that built it are archived under [`docs/history/`](docs/history/), one file per epic. While an epic is in progress, its `PLAN.md` lives at the repo root with one-commit-sized tasks.
 
 ## Constraints to keep in mind
 
