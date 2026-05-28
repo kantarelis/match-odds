@@ -10,7 +10,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 | Task | Description | Status | Commit |
 |------|-------------|--------|--------|
-| 1 | `matchodds.modeling.betting`: overround removal + per-match edge / EV + unit tests | ⬜ Not started | — |
+| 1 | `matchodds.modeling.betting`: overround removal + per-match edge / EV + unit tests | ✅ Done | — |
 | 2 | `matchodds.modeling.betting`: flat-stake positive-EV backtest summary + unit tests | ⬜ Not started | — |
 | 3 | `notebooks/03_betting_edge.ipynb` narrative + caveats; `make nb-lint` / `make nb-run` green | ⬜ Not started | — |
 
@@ -35,20 +35,22 @@ Live-odds ingestion (forbidden by CLAUDE.md); bet placement code; Kelly or fract
 
 ---
 
-## Task 1 — `matchodds.modeling.betting`: overround + edge / EV + tests
+## Task 1 — `matchodds.modeling.betting`: overround + edge / EV + tests ✅
 
-**Scope (files to touch).**
-- `src/matchodds/modeling/betting.py` (new): three pure helpers operating on numpy/pandas inputs in the fixed `[H, D, A]` order —
-  - `implied_probabilities(odds: FloatArray) -> FloatArray` — `1 / odds_i` normalised by the row sum (overround removed). Validates `odds > 1.0`; raises `ValueError` on a row that cannot be normalised.
-  - `edge(model_prob: FloatArray, market_odds: FloatArray) -> FloatArray` — `model_prob - implied_prob`, element-wise.
-  - `expected_value(model_prob: FloatArray, market_odds: FloatArray) -> FloatArray` — `model_prob * (odds - 1) - (1 - model_prob)` per unit stake; positive ⇒ favourable bet under the model.
-- `tests/unit/test_betting.py` (new): unit tests pinning a worked numeric example (e.g. odds `(2.0, 3.3, 3.8)` → implied probs sum to 1, the implied vector beats raw `1/odds` by exactly the overround factor); shape + dtype checks; `ValueError` on invalid odds; deterministic re-calls.
+**Outcome.** Added `src/matchodds/modeling/betting.py` with the three pure helpers exactly as scoped:
 
-**Acceptance criteria.**
-- `make check` + `make test` green. No edits to Epic 04 code.
-- Helpers are pure numeric functions: no I/O, no model dependency, no global state.
+- `implied_probabilities(odds)` — `1 / odds` row-normalised; overround removed. Strict on invalid input: raises `ValueError` on a row that isn't all finite and `> 1.0`.
+- `edge(model_prob, market_odds)` — `model_prob − implied_prob`, per outcome.
+- `expected_value(model_prob, market_odds)` — `P · odds − 1` per unit stake; positive ⇒ favourable bet. This is the bet-selection criterion Task 2's backtest will key off, since the same edge can be favourable or unfavourable depending on the payout.
 
-**Gate.** `make check` → PASS; `make test` → all green.
+Pure numerics; no I/O, no model dependency, no global state; no edits to Epic 04 code or the shipped `models/v1.joblib`. Module docstring notes the strictness as a deliberate boundary against the *"no live betting / real-money framing"* constraint in CLAUDE.md.
+
+Added `tests/unit/test_betting.py` with 8 pinned tests: overround removal on the same `(2.0, 3.0, 3.0) → (3/7, 2/7, 2/7)` worked example as `test_baselines.py`; a realistic 6.6% bookmaker hold on `(2.0, 3.3, 3.8)`; `ValueError` for each of `1.0 / 0.5 / −1.0 / NaN / inf`; determinism; `edge` matches manual calc; `EV = P·odds − 1` pinned on a break-even case (`(0.5, 0.25, 0.25)` at `(2.0, 3.0, 3.0) → (0, −0.25, −0.25)`) and a favourable-bet case (all-positive EVs); invalid-odds rejection inherited through `expected_value`.
+
+**Deviations (with reason).**
+1. **`.vulture_allowlist.py` updated.** Added `betting.edge` and `betting.expected_value` to the forward-reference list because they have no `src/` consumer until Task 2 (backtest) / Task 3 (notebook); without this, `vulture` (run inside `make check`) reports them as dead code. `implied_probabilities` doesn't need listing since `edge` already calls it. This is the project-wide allowlist convention already used for cross-epic forward references — not a line-level suppression. Not in PLAN's Task 1 scope but a necessary `make check`-keeping consequence of landing the helpers one commit before their consumers.
+
+**Gate.** `make check` → PASS · `make test` → 149 passed (+8 new betting tests).
 
 ---
 
