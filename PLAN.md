@@ -14,7 +14,7 @@ The deployed logistic model is calibrated via `CalibratedClassifierCV` over forw
 
 | Task | Description | Status | Commit |
 |------|-------------|--------|--------|
-| 1 | Hold-out (prefit) calibration in `calibration.py` + updated calibration tests (incl. a home-advantage no-inversion guard) | ⬜ Not started | — |
+| 1 | Hold-out (prefit) calibration in `calibration.py` + updated calibration tests (incl. a home-advantage no-inversion guard) | ✅ Done | — |
 | 2 | Re-train → re-select → re-freeze `models/v1.joblib` + `v1.metadata.json`; validate log-loss/Brier ≥ parity and the home-advantage sanity | ⬜ Not started | — |
 | 3 | Refresh `notebooks/02_modeling.ipynb` calibration narrative + reliability diagrams | ⬜ Not started | — |
 
@@ -38,17 +38,17 @@ Feature-pipeline changes; serving-layer changes (frozen after Epic 05); the demo
 
 ---
 
-## Task 1 — Hold-out (prefit) calibration in `calibration.py` + tests
+## Task 1 — Hold-out (prefit) calibration in `calibration.py` + tests ✅
 
-**Scope (files to touch).**
-- `src/matchodds/modeling/calibration.py`: rewrite `calibrate()` (and `_fit_calibrated` / `_select_method` as needed) to the hold-out scheme of Decision 2 — base estimator fit on the final fold's training slice, calibrator fit on the held-out later slice via `FrozenEstimator`. Adapt `_select_method` (sigmoid vs isotonic) to score on the held-out tail. Keep `_CalibratedModel`'s `[H, D, A]` scatter, the `calibrate(...)` signature, determinism, and `safe_calibration_cv()`'s small-data → `None` contract (so `train.py`'s cold-start fallback is unchanged); extend its validity check so the held-out slice carries all three classes.
-- `tests/unit/test_calibration.py`: rewrite `test_wrapper_is_a_calibrated_classifier_over_temporal_folds` to assert the **new** leakage-free hold-out construction (base trained on earlier dates; calibrator fit on a strictly-later held-out slice; never a random split). Keep the valid-grid, auto-method, and determinism tests. **Add a home-advantage no-inversion guard**: on a purpose-built synthetic table with an injected home advantage, the calibrated model keeps `P(home) > P(away)` for a balanced fixture (the regression this epic fixes) — add a fixture under `tests/fixtures/` if the existing synthetic one is too small / neutral.
+**Outcome.** `calibrate()` rewritten to the hold-out (prefit) scheme of Decision 2: it pulls the **final** `(train_idx, holdout_idx)` from the `TimeOrderedSplit`, fits the cloned base on the train slice, then fits `CalibratedClassifierCV(FrozenEstimator(base), ...)` on the strictly-later holdout — calibrator sees only post-training-window data. `_select_method` ("auto") now scores sigmoid vs isotonic on a temporal sub-split of the **holdout itself** (last fold of `safe_calibration_cv(holdout)`), falling back to sigmoid if the holdout is too small to sub-split. `safe_calibration_cv` gained the held-out-classes guard (the final fold's test slice must carry all three outcomes, in addition to the existing per-fold-train check). `_CalibratedModel`'s `[H, D, A]` scatter, the `calibrate(...)` signature, determinism, and the small-data → raw fallback contract are all preserved — `train.py` unchanged, the committed (old) `v1.joblib` still loads, serving tests stay green.
 
-**Acceptance criteria.**
-- `make check` + `make test` green. `train.py` unchanged; the committed (old) artifact and serving tests stay green.
-- The new calibration is leakage-free (calibrator sees only post-training-window data), deterministic, emits a valid `(n, 3)` `[H, D, A]` grid, and the no-inversion guard passes.
+Tests rewritten: the wrapper test now asserts the new structure (`CalibratedClassifierCV` whose inner estimator is a `FrozenEstimator`; the last fold's holdout dates are strictly after the train slice's). The valid-grid / auto-method / determinism tests are kept. Added the Epic-06.5 home-advantage no-inversion guard: on a strongly-home-biased fixture, the calibrated model keeps `P(home) > P(away)` for a perfectly balanced feature row (every feature at its training-set median).
 
-**Gate.** `make check` → PASS; `make test` → all green.
+**Deviations (with reason).**
+1. **`cv=[(arange(n), arange(n))]` passed explicitly to `CalibratedClassifierCV`.** sklearn 1.8's `FrozenEstimator` + `CalibratedClassifierCV` path still routes through `cross_val_predict` internally (the docstring talks about "the prefit pattern", but `_ensemble="auto"` only flips `ensemble=False` — it does not skip CV). The default 5-fold `StratifiedKFold` then runs its per-fold class-diversity check and raises on tiny / class-imbalanced holdouts. A trivial single-fold cv (all indices in both train and test) bypasses that check; under a frozen base the fold-level fit is a no-op so the predictions are exact, and calibration proceeds as the prefit-style fit on the full holdout that the docstring promises. Not in PLAN's Decision 2 wording but a necessary implementation detail.
+2. **`tests/fixtures/home_advantage_matches.csv` (new).** 90 matches over 30 dates (6 teams × 3 seasons, round-robin home/away, 51/22/17 H/D/A from a 60/20/20 outcome bag). Generated deterministically with random seed 2; seed 42 (the first try, matching `config.RANDOM_SEED`) left no Draws in the final fold's holdout, tripping `safe_calibration_cv`'s new all-classes guard inside the calibration test. Seed 2 is the first low-numbered seed that yields all three classes in the last fold with a healthy draw count.
+
+**Gate.** `make check` → PASS · `make test` → 141 passed.
 
 ---
 
