@@ -16,7 +16,7 @@ The deployed logistic model is calibrated via `CalibratedClassifierCV` over forw
 |------|-------------|--------|--------|
 | 1 | Hold-out (prefit) calibration in `calibration.py` + updated calibration tests (incl. a home-advantage no-inversion guard) | ✅ Done | — |
 | 2 | Re-train → re-select → re-freeze `models/v1.joblib` + `v1.metadata.json`; validate log-loss/Brier ≥ parity and the home-advantage sanity | ✅ Done | — |
-| 3 | Refresh `notebooks/02_modeling.ipynb` calibration narrative + reliability diagrams | ⬜ Not started | — |
+| 3 | Refresh `notebooks/02_modeling.ipynb` calibration narrative + reliability diagrams | ✅ Done | — |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
 
@@ -89,15 +89,24 @@ The Epic-06.5 regression case from the diagnosis (`AEK(H) vs PAOK`) went from th
 
 ---
 
-## Task 3 — Refresh `notebooks/02_modeling.ipynb`
+## Task 3 — Refresh `notebooks/02_modeling.ipynb` ✅
 
-**Scope (files to touch).**
-- `notebooks/02_modeling.ipynb`: update the calibration narrative (now hold-out / prefit, not ensemble-over-folds) and re-render the reliability diagrams + bake-off table against the recalibrated models; add a one-line note on the home-advantage fix. Re-execute headless.
+**Outcome.** Two markdown-only edits to `notebooks/02_modeling.ipynb` brought the calibration story in line with the shipped code:
 
-**Acceptance criteria.**
-- `make nb-lint` + `make nb-run` green; the notebook's calibration story matches the shipped code; `make check` + `make test` stay green.
+- **Cell 5 — Reliability section.** Added an Epic-06.5 paragraph describing the new construction (base fit on the inner training slice from `safe_calibration_cv`'s final fold, then `FrozenEstimator` + `CalibratedClassifierCV` fits the calibration regressor on the strictly-later held-out tail — leakage-free). Names the prior ensemble-over-folds construction as the source of the home-advantage inversion and quotes the regression case: `AEK(H)` vs `PAOK` 0.472 raw → 0.336 broken → 0.434 fixed.
+- **Cell 7 — Takeaways.** Added one bullet on the calibration switch and the shipped logistic model's mean-CV improvements from Task 2 (log-loss 0.9989 → 0.9945; Brier 0.5954 → 0.5930).
 
-**Gate.** `make check` → PASS; `make test` → green; `make nb-lint` + `make nb-run` → green.
+**No code-cell changes.** The bake-off cell calls `train.run(...)` and the reliability cell calls `calibration.calibrate(...)` — both resolve to the new hold-out path automatically, so re-execution renders the new probabilities and diagrams. The committed notebook stores no outputs (repo convention), so `make nb-run` is purely a CI smoke test of end-to-end executability rather than an output-baking step.
+
+**Deviations.** None.
+
+**Gate.** `make check` → PASS · `make test` → 141 passed · `make nb-lint` + `make nb-run` → green.
+
+---
+
+## Epic close-out (pending)
+
+All three tasks done. The remaining workflow step (per CLAUDE.md → *Development Methodology* step 7) is the close-out commit: mark Epic 06.5 Done in `MASTER_PLAN.md` with the commit range, then archive this `PLAN.md` to `docs/history/epic-06.5-recalibration.md` in a single rename commit so the root `PLAN.md` slot is free for the next epic.
 
 ---
 
