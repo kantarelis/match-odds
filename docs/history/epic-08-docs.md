@@ -14,7 +14,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | 2 | `docs/evaluation.md` — temporal-CV protocol + metric tables (recomputable via `make train`) + a link to `notebooks/02_modeling.ipynb` for reliability diagrams | ✅ Done | — |
 | 3 | `docs/model_card.md` — intended use, data sources, metrics, calibration story, limitations, ethics | ✅ Done | — |
 | 4 | `docs/architecture.md` — notebook → package → service data-flow diagram (Mermaid) + the leakage / determinism / train-serve-skew invariants | ✅ Done | — |
-| 5 | `README.md` polish pass + committed demo screenshot + fresh-clone `make repro` reproducibility verification | ⬜ Not started | — |
+| 5 | `README.md` polish pass + committed demo GIF + fresh-clone `make repro` reproducibility verification | ✅ Done | — |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
 
@@ -116,20 +116,33 @@ Sections, in order:
 
 ---
 
-## Task 5 — `README.md` polish + demo screenshot + fresh-clone reproducibility verification
+## Task 5 — `README.md` polish + demo GIF + fresh-clone reproducibility verification ✅
 
-**Scope (files to touch).**
-- `README.md`: a polish pass on top of whatever is already there. Final shape (top → bottom): a one-paragraph elevator pitch (what this is, why it exists, the two recruiter signals); the per-role *What this demonstrates* section (ML Engineer primary + Data Engineer bonus, with the existing wording reused if accurate); a *Quickstart* block (`make install-dev && make repro && make up`, with a sentence on `MATCHODDS_DATA_DIR` for the sample fixture path); a small results table linking out to `docs/evaluation.md`; a demo screenshot inline (`![Demo](docs/images/demo.png)`); a *Documentation* section with three bullets (the three new docs files); a *Reproducibility* section that names the exact command sequence the verification ran and links the artifact's metadata; a *Constraints / out-of-scope* section restating the no-live-betting framing.
-- `docs/assets/demo.gif` (new): an animated GIF captured by the user from the running `make up` demo (the interaction loop: pick a league + two teams, hit Predict, watch the calibrated probabilities + plain-English read render). Captured with `wf-recorder -g "$(slurp)"` (Hyprland) and converted with `ffmpeg` two-pass palette generation; sized ~3–4 MB at 820 px wide. Source `demo.mp4` also kept in `docs/assets/` so the GIF can be regenerated without re-recording.
-- **Fresh-clone verification (manual, one-off).** The user performs the destructive sequence — clone the repo into a scratch directory, `make install-dev && make repro && make up`, confirm the demo loads and `models/v1.metadata.json` metrics match the committed metadata. Outcome reported in the post-task summary.
+**Outcome.** Final pass on the README, the demo GIF + its MP4 source, and the path-and-style consolidation that came with them. Three working-tree changes:
 
-**Acceptance criteria.**
-- `make check` + `make test` green.
-- The screenshot file exists and renders inline on the GitHub-rendered README.
-- The Quickstart block runs end-to-end on a fresh clone (verified manually by the user; outcome captured in the post-task summary).
-- The Constraints / out-of-scope section explicitly restates *"no live betting / real-money use"* (CLAUDE.md).
+- **`README.md`** rewritten in the `quake-feed` presentation style (matching the precedent the user explicitly pointed at as the target):
+  - Ball emoji in the title (`# ⚽ match-odds`); bold-stack quote-block tagline + elevator pitch; horizontal rule under the CI badges.
+  - 🧭 Table of Contents with anchor links; every section gets an emoji prefix (🏗️ Overview · 🎯 What this demonstrates · 🎬 Demo · 📁 Project Structure · ⚙️ Prerequisites · 🚀 Quick Start · 📊 Results · 📚 Documentation · 🧩 Tech Stack · 🔁 Reproducibility · 🌐 Data sources · 🚫 Constraints · 📜 License).
+  - *What this demonstrates* turned into a **role table** (ML Engineer / Data Engineer / Software Engineer, each with "Where to look" paths) instead of the prior bullet list.
+  - Demo GIF centred with the `<p align="center"><img …/></p>` idiom, descriptive alt-text covering the interaction (pick league → pick teams → hit Predict → probabilities render), one-line caption underneath.
+  - Quick Start broken into three numbered steps with a service URL table + a `MATCHODDS_DATA_DIR=tests/fixtures/sample/` working-without-a-download subsection.
+  - Bake-off table lifted from `docs/evaluation.md` with the *"current as of 2026-05-28"* honesty marker + the honest *"the bookmaker baseline beats every deployable model — the honest result on closing odds…"* framing.
+  - Documentation section linking the four `docs/*.md` files plus `docs/history/`.
+  - Reproducibility section names the exact `git clone … && make install-dev && make repro && make up` sequence; honest caveat that scores reproduce, not pickled bytes.
+  - Constraints / out-of-scope explicitly restates the no-live-betting / no-real-money / no-advice framing and names Epic 07's notebook with its **negative-ROI** outcome — so the disclaimer compounds across README → model card → notebook.
+- **`docs/assets/demo.gif`** (3.6 MB, 820 × 1306, 36.7 s, 551 frames) + **`docs/assets/demo.mp4`** (1.7 MB, untrimmed 37.7 s source). Captured with `wf-recorder -g "$(slurp)" -f docs/assets/demo.mp4` on Hyprland (the mainstream wlroots screen-capture pair); converted with the two-pass `ffmpeg palettegen / paletteuse` pipeline at 15 fps · 820 px wide; re-encoded once with `-ss 1` to drop the leading 1 s of dead time before the user starts interacting. The MP4 is kept alongside the GIF so future GIF re-encodes don't require re-recording.
 
-**Gate.** `make check` → PASS · `make test` → green. Post-task summary includes (a) the verified fresh-clone command sequence + outcome, (b) the screenshot path and size, (c) a one-line reminder for the user about plan step 2.9 (pin the repo on the GitHub profile) and the out-of-repo CV ticket (`~/dev/cv` → `data/projects.yaml` entry).
+**Deviations (with reason).**
+1. **PNG → GIF.** PLAN draft picked PNG citing weight; reversed at user request mid-task — *"isn't a video more worth it?"*. GIF is also what `quake-feed` ships (`docs/assets/demo.gif`), so the swap aligned the two repos. Decision 4 was rewritten to reflect the GIF choice + the actual `wf-recorder` + `ffmpeg` workflow.
+2. **`docs/images/` → `docs/assets/`.** User placed the MP4 in `docs/assets/` (matching the quake-feed path verbatim). The README, PLAN Decision 4, and PLAN Task 5 scope were all swung to the new path; the `docs/images/.gitkeep` placeholder directory was removed.
+3. **Mid-task GIF trim.** After the first encode, user asked for the leading 1 s cut. Re-encoded from the MP4 with `-ss 1` on both ffmpeg passes; the MP4 stayed untrimmed so any future re-cut starts from the same source.
+
+**Pending follow-ups (manual, your turn).**
+1. **Fresh-clone reproducibility verification — not yet performed in this session.** The plan calls for a one-off `git clone … && make install-dev && make repro` against a scratch directory, diffing the resulting `models/v1.metadata.json` `["models"]` block against the committed metadata. Recommended to run before merging the Epic 08 branch; if it passes, no further repo change needed (the README's Reproducibility section already describes the sequence).
+2. **Plan step 2.9 — pin the `match-odds` repo on the GitHub profile.** Out-of-repo manual action.
+3. **CV integration ticket.** Add a `data/projects.yaml` entry under `~/dev/cv` (tagged `science`, `data`) and verify with `make cv-all`. Lives in a different repo, not part of this commit chain.
+
+**Gate.** `make check` → PASS · `make test` → 155 passed.
 
 ---
 
