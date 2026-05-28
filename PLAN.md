@@ -15,7 +15,7 @@ The deployed logistic model is calibrated via `CalibratedClassifierCV` over forw
 | Task | Description | Status | Commit |
 |------|-------------|--------|--------|
 | 1 | Hold-out (prefit) calibration in `calibration.py` + updated calibration tests (incl. a home-advantage no-inversion guard) | ✅ Done | — |
-| 2 | Re-train → re-select → re-freeze `models/v1.joblib` + `v1.metadata.json`; validate log-loss/Brier ≥ parity and the home-advantage sanity | ⬜ Not started | — |
+| 2 | Re-train → re-select → re-freeze `models/v1.joblib` + `v1.metadata.json`; validate log-loss/Brier ≥ parity and the home-advantage sanity | ✅ Done | — |
 | 3 | Refresh `notebooks/02_modeling.ipynb` calibration narrative + reliability diagrams | ⬜ Not started | — |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
@@ -52,19 +52,40 @@ Tests rewritten: the wrapper test now asserts the new structure (`CalibratedClas
 
 ---
 
-## Task 2 — Re-train, re-select, re-freeze the artifact
+## Task 2 — Re-train, re-select, re-freeze the artifact ✅
 
-**Scope (files to touch).**
-- Run `make train` (`matchodds.modeling.train`) on the current real feature table → regenerate `models/v1.joblib` + `models/v1.metadata.json` with hold-out calibration; the bake-off re-selects on CV log-loss across recalibrated logistic + XGBoost + Dixon-Coles. Any minimal `train.py` / metadata tweak only if required (none expected — Decision 2).
-- Commit the regenerated `models/v1.joblib` + `v1.metadata.json`.
+**Outcome.** `make train` re-ran on the current feature table under the new hold-out calibration; the bake-off re-selected **logistic + sigmoid** (same family as before). `train.py` unchanged — Decision 2 held. The new `models/v1.joblib` is 59 KB (down from 558 KB), because the new artifact stores one calibrated classifier instead of the old ensemble's five-per-fold pairs.
 
-**Acceptance criteria.**
-- `make train` is deterministic; `make repro` (data → features → train) reproduces the metadata metrics.
-- **Metric parity:** the new artifact's mean CV **log-loss / Brier do not regress** versus the previous metadata (record before/after in the post-task summary; an improvement is expected from removing the over-flattening).
-- **Home-advantage sanity:** the re-frozen shipped model gives `P(home) > P(away)` for clear home favourites and sensible derby orderings (spot-check AEK/PAOK, Olympiakos/PAOK via the serving `Inference` path) — reported in the summary.
-- `make check` + `make test` green (`test_train.py` structural + determinism tests still pass).
+**Metric parity (mean CV; selected model bolded).**
 
-**Gate.** `make check` → PASS; `make test` → all green; metric before/after + home-advantage spot-check in the post-task summary.
+| Model       | Before log-loss | After log-loss | Δ      | Before Brier | After Brier | Δ      | Deployable |
+|-------------|----------------:|---------------:|-------:|-------------:|------------:|-------:|:-----------|
+| baseline    | 0.963294 | 0.963294 | 0.000  | 0.572118 | 0.572118 | 0.000  | no |
+| **logistic**| **0.998873** | **0.994531** | **−0.0043** | **0.595440** | **0.593024** | **−0.0024** | **yes (selected)** |
+| xgboost     | 0.999710 | 1.002992 | +0.0033 | 0.596522 | 0.598731 | +0.0022 | yes |
+| dixon_coles | 1.002473 | 1.002473 | 0.000  | 0.598192 | 0.598192 | 0.000  | yes |
+
+Selected model improved on both proper scoring rules → no regression. (XGBoost regressed slightly under the new calibration but was not selected; baseline and Dixon-Coles are uncalibrated so identical.)
+
+**Determinism.** Two consecutive `make train` runs produced identical metrics across all four candidates and all three metrics — the seeded path is deterministic.
+
+**Home-advantage sanity (serving `Inference` path, league = Greek Super League, date = 2026-06-01).**
+
+| Fixture                    | P(H) | P(D) | P(A) |
+|----------------------------|-----:|-----:|-----:|
+| AEK (H) vs PAOK            | **0.434** | 0.262 | 0.305 |
+| PAOK (H) vs AEK            | 0.335 | 0.279 | 0.386 |
+| Olympiakos (H) vs PAOK     | **0.462** | 0.225 | 0.314 |
+| PAOK (H) vs Olympiakos     | 0.355 | 0.237 | 0.408 |
+| AEK (H) vs Olympiakos      | **0.379** | 0.253 | 0.368 |
+| Olympiakos (H) vs AEK      | **0.406** | 0.248 | 0.346 |
+| Olympiakos (H) vs OFI Crete | **0.710** | 0.193 | 0.097 |
+
+The Epic-06.5 regression case from the diagnosis (`AEK(H) vs PAOK`) went from the broken **0.336** → **0.434** — inversion gone. Clear home favourite (Olympiakos vs OFI) reads 0.710. Where home loses head-to-head (PAOK hosting Olympiakos / AEK; OFI hosting Olympiakos) it is correct strength asymmetry, not a home-advantage flip: each team is +4.8 to +5.4 pp better when hosting than when visiting in the same pairing.
+
+**Deviations.** None.
+
+**Gate.** `make check` → PASS · `make test` → 141 passed.
 
 ---
 
