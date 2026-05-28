@@ -11,7 +11,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 | Task | Description | Status | Commit |
 |------|-------------|--------|--------|
 | 1 | `matchodds.modeling.betting`: overround removal + per-match edge / EV + unit tests | ✅ Done | — |
-| 2 | `matchodds.modeling.betting`: flat-stake positive-EV backtest summary + unit tests | ⬜ Not started | — |
+| 2 | `matchodds.modeling.betting`: flat-stake positive-EV backtest summary + unit tests | ✅ Done | — |
 | 3 | `notebooks/03_betting_edge.ipynb` narrative + caveats; `make nb-lint` / `make nb-run` green | ⬜ Not started | — |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
@@ -54,17 +54,17 @@ Added `tests/unit/test_betting.py` with 8 pinned tests: overround removal on the
 
 ---
 
-## Task 2 — `matchodds.modeling.betting`: flat-stake EV>0 backtest summary + tests
+## Task 2 — `matchodds.modeling.betting`: flat-stake EV>0 backtest summary + tests ✅
 
-**Scope (files to touch).**
-- `src/matchodds/modeling/betting.py`: add `backtest(model_probs, market_odds, results, *, edge_threshold=0.0, stake=1.0) -> dict[str, float | int]` returning at minimum `n_matches`, `n_bets`, `n_wins`, `total_staked`, `total_return`, `pnl`, `roi`, `win_rate`. Bet selection rule: for each match, pick the single outcome (H / D / A) with the largest positive EV above `edge_threshold` and stake `stake` on it (one bet per match max); a match with no qualifying outcome contributes to `n_matches` but not to `n_bets`. Pure function — takes arrays, returns the summary; no I/O, no model orchestration.
-- `tests/unit/test_betting.py`: extend with a small synthetic 1X2 fixture (a handful of matches with known model probs, odds, and outcomes) where the expected PnL, ROI, n_bets, and win_rate are pinned exactly. Edge-case tests: zero bets when `edge_threshold` is unrealistically high; deterministic across two calls; handles a row where two outcomes share the maximum EV (deterministic tie-break — e.g. lowest index wins).
+**Outcome.** Added `backtest(model_probs, market_odds, results, *, edge_threshold=0.0, stake=1.0) -> dict[str, float | int]` to `src/matchodds/modeling/betting.py`. For each match it picks the outcome with the largest :func:`expected_value`; places a `stake`-sized bet iff that EV is **strictly greater than** `edge_threshold`. Ties go to the lowest outcome index (numpy `argmax` default — H beats D beats A). Returns `n_matches`, `n_bets`, `n_wins`, `total_staked`, `total_return`, `pnl`, `roi`, `win_rate`; `roi` and `win_rate` fall back to `0.0` (not NaN) when no bets fire — a "did nothing" strategy is mathematically clean and avoids a divide-by-zero. Pure function: no I/O, no model orchestration; per-bet ledger formatting stays the notebook's concern.
 
-**Acceptance criteria.**
-- `make check` + `make test` green.
-- The helper is **summary-only** (numeric returns); per-bet ledger formatting belongs in the notebook.
+Added six tests to `tests/unit/test_betting.py` keyed off a pinned 4-match synthetic fixture (Match 0: bet H @ 2.0, result H → +1.0 · Match 1: bet D @ 3.0, result H → −1.0 · Match 2: max EV is −0.1 → **no bet** · Match 3: bet A @ 2.5, result A → +1.5). Expected default-threshold summary `n_bets=3, n_wins=2, pnl=+1.5, roi=+0.5, win_rate=2/3` is asserted exactly. Plus: unrealistic-threshold zero-bet case (`edge_threshold=1.0`); stake-doubling invariant (PnL doubles, ROI / win-rate unchanged); a targeted **tie-break test** (EVs tied at D and A at +0.125, result `A` — if `backtest` picked D the bet loses, so the assertion verifies the lower-index pick); determinism; invalid-odds rejection inherited via `expected_value`.
 
-**Gate.** `make check` → PASS; `make test` → all green.
+**Deviations (with reason).**
+1. **Mid-task refactor: `backtest` calls `expected_value` instead of inlining `P*odds − 1`.** Initial implementation inlined the EV math to dodge double-validation of `odds`; the refactor restores code reuse, removes one entry from `.vulture_allowlist.py` (`expected_value` is now reached via `backtest`), and the double-validation cost is microseconds. Functionally equivalent — same numeric output.
+2. **`.vulture_allowlist.py` updated again.** After the refactor: `betting.expected_value` removed (now reached via `backtest`); `betting.backtest` added (itself notebook-only until Task 3 lands); `betting.edge` retained. The forward-reference list shrinks by one net entry.
+
+**Gate.** `make check` → PASS · `make test` → 155 passed (+6 new tests).
 
 ---
 
