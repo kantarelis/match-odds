@@ -9,6 +9,7 @@ interaction, so the predict call is guarded behind the button press.
 
 from __future__ import annotations
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -26,16 +27,30 @@ def _render_prediction(probs: Probabilities, home: str, away: str) -> None:
     draw_col.metric("Draw", f"{probs.draw * 100:.0f}%")
     away_col.metric(f"{away} win", f"{probs.away_win * 100:.0f}%")
 
-    chart = pd.DataFrame(
-        {"probability": [probs.home_win, probs.draw, probs.away_win]},
-        index=list(_OUTCOME_LABELS),
+    # Altair (not st.bar_chart) so the categorical x-axis stays in H -> D -> A order: st.bar_chart
+    # alpha-sorts its string index and would render Away | Draw | Home instead.
+    chart_data = pd.DataFrame(
+        {"outcome": list(_OUTCOME_LABELS), "probability": [probs.home_win, probs.draw, probs.away_win]}
     )
-    st.bar_chart(chart, y="probability")
+    chart = (
+        alt.Chart(chart_data)
+        .mark_bar()
+        .encode(
+            x=alt.X("outcome:N", sort=list(_OUTCOME_LABELS), title=None),
+            y=alt.Y("probability:Q", title="probability"),
+        )
+    )
+    st.altair_chart(chart, use_container_width=True)
 
     st.info(verbal_summary(probs))
 
 
 st.set_page_config(page_title="match-odds — next-match forecast", page_icon="⚽")
+
+# Streamlit ships no first-class toggle for the "Made with Streamlit vX.Y.Z" footer; a one-line CSS
+# injection is the supported workaround. Keep this immediately after set_page_config so the style
+# applies before any widget renders. Do not strip as "cruft" — without it the footer comes back.
+st.markdown("<style>footer {visibility: hidden;}</style>", unsafe_allow_html=True)
 
 st.title("⚽ match-odds — next-match forecast")
 st.caption(

@@ -4,13 +4,13 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 **Branch:** `epic-08-docs`
 
-**Goal.** Make the repo do the recruiter work in 30 seconds and prove it reproduces end-to-end. Ship: a small **demo polish** pass (drop Streamlit's "Deploy" button, remove the "Made with Streamlit" footer, and restore the bar-chart's H / D / A order — the three extras called out for this epic), the three documentation deep-dives the README links to (`docs/evaluation.md`, `docs/model_card.md`, `docs/architecture.md`), a **README pass** that opens with the per-role "what this demonstrates" map and ends with a verified `make repro` quickstart + a committed demo screenshot, and a **fresh-clone reproducibility check** to certify the README's claims. Plan step 2.9 (pinning the repo on the GitHub profile) is the user's manual closeout — not a code task.
+**Goal.** Make the repo do the recruiter work in 30 seconds and prove it reproduces end-to-end. Ship: a small **demo polish** pass (drop Streamlit's Deploy button while keeping the hamburger menu, remove the "Made with Streamlit" footer, and restore the bar-chart's H / D / A order — the three extras called out for this epic), the three documentation deep-dives the README links to (`docs/evaluation.md`, `docs/model_card.md`, `docs/architecture.md`), a **README pass** that opens with the per-role "what this demonstrates" map and ends with a verified `make repro` quickstart + a committed demo screenshot, and a **fresh-clone reproducibility check** to certify the README's claims. Plan step 2.9 (pinning the repo on the GitHub profile) is the user's manual closeout — not a code task.
 
 ## Progress
 
 | Task | Description | Status | Commit |
 |------|-------------|--------|--------|
-| 1 | **Demo polish** — hide the Streamlit "Deploy" toolbar entry + remove the "Made with Streamlit" footer + restore the H / D / A bar-chart order | ⬜ Not started | — |
+| 1 | **Demo polish** — drop the Deploy button (keep the hamburger menu) + remove the "Made with Streamlit" footer + restore the H / D / A bar-chart order | ⬜ Not started | — |
 | 2 | `docs/evaluation.md` — temporal-CV protocol + metric tables (recomputable via `make train`) + a link to `notebooks/02_modeling.ipynb` for reliability diagrams | ⬜ Not started | — |
 | 3 | `docs/model_card.md` — intended use, data sources, metrics, calibration story, limitations, ethics | ⬜ Not started | — |
 | 4 | `docs/architecture.md` — notebook → package → service data-flow diagram (Mermaid) + the leakage / determinism / train-serve-skew invariants | ⬜ Not started | — |
@@ -24,7 +24,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 ## Decisions baked in (flag at review to change)
 
-1. **Demo polish via `demo/.streamlit/config.toml` + a small `demo/app.py` patch.** The toolbar entry (the "Deploy" button) is removed by `[client] toolbarMode = "minimal"` in the config file — supported since Streamlit ≥ 1.18, so safe on the pinned 1.57.0. The "Made with Streamlit" badge is removed by a one-line `st.markdown("<style>footer{visibility:hidden;}</style>", unsafe_allow_html=True)` immediately after `st.set_page_config(...)` — Streamlit has no first-class toggle. The bar-chart order (currently "Away | Draw | Home" because `st.bar_chart` sorts the DataFrame's string index alphabetically — A, D, H) is restored to "Home | Draw | Away" by switching to `st.altair_chart` with an explicit categorical sort order on the x-axis. Config lives **inside `demo/`** so it travels through the Dockerfile and `make up` picks it up automatically (no extra mount).
+1. **Demo polish via `demo/.streamlit/config.toml` (`toolbarMode = "viewer"`) + a small `demo/app.py` patch.** Streamlit's `viewer` mode hides the **developer** options (Deploy button, Rerun, Clear cache) from both the toolbar and the hamburger menu while **keeping the menu itself** with the **viewer** options end users actually find useful (Print, record screencast, theme toggle, About). The alternative `minimal` would hide the menu entirely too — that strips functionality the demo is happy to keep. The "Made with Streamlit" badge is then removed by a one-line `st.markdown("<style>footer{visibility:hidden;}</style>", unsafe_allow_html=True)` immediately after `st.set_page_config(...)` — Streamlit has no first-class toggle for the page-bottom footer. The bar-chart order (currently "Away | Draw | Home" because `st.bar_chart` sorts the DataFrame's string index alphabetically — A, D, H) is restored to "Home | Draw | Away" by switching to `st.altair_chart` with an explicit categorical sort order on the x-axis. Config lives **inside `demo/`** so it travels through the Dockerfile and `make up` picks it up automatically (no extra mount).
 2. **Reliability diagrams stay in `notebooks/02_modeling.ipynb`; not committed as PNGs.** `docs/evaluation.md` quotes the numbers (CV log-loss / Brier / accuracy, refreshable by `make train` + reading `models/v1.metadata.json`) and links the notebook for the visual story. Avoids stale committed images and keeps the notebook the single source of truth for charts.
 3. **Architecture diagram is a Mermaid flowchart inline in `docs/architecture.md`.** GitHub renders Mermaid natively in markdown — no PNG, no extra tooling, fully diffable. Cheaper to keep accurate than a checked-in image.
 4. **Demo screenshot is a single PNG at `docs/images/demo.png` (committed).** Manual capture by the user with the demo + serving stack up via `make up`; the README links it inline. Not an animated GIF — bigger files, harder to refresh, README rendering is still fine with a static PNG.
@@ -38,19 +38,19 @@ CI-side reproducibility automation (would need docker-in-docker or significant C
 
 ---
 
-## Task 1 — Demo polish (Deploy button + "Made with Streamlit" footer + H/D/A bar-chart order)
+## Task 1 — Demo polish (Deploy button / "Made with Streamlit" footer / H/D/A bar-chart order)
 
 **Scope (files to touch).**
-- `demo/.streamlit/config.toml` (new): `[client]` section with `toolbarMode = "minimal"`. Removes the *Deploy* entry from Streamlit's top-right toolbar.
+- `demo/.streamlit/config.toml` (new): `[client]` section with `toolbarMode = "viewer"`. Hides Deploy / Rerun / Clear cache from the toolbar and the hamburger menu while keeping the menu itself with viewer-side options (Print, record screencast, theme toggle, About). **Not `minimal`** — that would hide the menu entirely.
 - `demo/app.py`:
-  - Add a one-line `st.markdown("<style>footer {visibility: hidden;}</style>", unsafe_allow_html=True)` (or equivalent CSS-injection helper) immediately after `st.set_page_config(...)` to hide the "Made with Streamlit v1.57.0" footer. A short code comment notes *why* (Streamlit ships no first-class toggle for the footer) so a future reader does not strip it as cruft.
-  - In `_render_prediction`, replace `st.bar_chart(chart, y="probability")` with an `st.altair_chart(...)` call that pins the x-axis sort to `list(_OUTCOME_LABELS)` (H → D → A) — e.g. `alt.X("outcome:N", sort=list(_OUTCOME_LABELS), title=None)`. The DataFrame already lists rows in H/D/A order; the explicit categorical sort overrides Vega-Lite's default alphabetical ordering (which produces A / D / H today). Keep the *y* metric the same. Adds `import altair as alt` at the top.
+  - Add a one-line `st.markdown("<style>footer {visibility: hidden;}</style>", unsafe_allow_html=True)` immediately after `st.set_page_config(...)` to hide the "Made with Streamlit v1.57.0" page-bottom footer. A short code comment notes *why* (Streamlit ships no first-class toggle for the footer) so a future reader does not strip it as cruft.
+  - In `_render_prediction`, replace `st.bar_chart(chart, y="probability")` with an `st.altair_chart(...)` call that pins the x-axis sort to `list(_OUTCOME_LABELS)` (H → D → A) — e.g. `alt.X("outcome:N", sort=list(_OUTCOME_LABELS), title=None)`. The explicit categorical sort overrides Vega-Lite's default alphabetical ordering (which produces A / D / H today). Adds `import altair as alt` at the top.
 - `demo/Dockerfile`: confirm `demo/.streamlit/` is copied into the image (it should already be — the Dockerfile copies the `demo/` directory wholesale — but verify and tweak only if needed).
 - `demo/tests/test_app.py`: if the existing AppTest smoke asserts on the chart object's data, update it for the new chart type; otherwise leave untouched (AppTest doesn't render chart visuals).
 
 **Acceptance criteria.**
 - `make check` + `make test` green. `altair` is already a transitive dependency of Streamlit (no `requirements-demo.txt` edit needed — verify before importing).
-- Manual smoke: `make up`, open the demo in a browser → no Deploy button, no "Made with Streamlit" footer, bar chart reads **Home win → Draw → Away win** left-to-right.
+- Manual smoke: `make up`, open the demo in a browser → no Deploy button in the top-right; **hamburger menu is still present** (Print / screencast / theme toggle / About); no "Made with Streamlit" page-bottom footer; bar chart reads **Home win → Draw → Away win** left-to-right.
 - The CSS injection lives in `demo/app.py` with a comment explaining why (no first-class Streamlit toggle exists for the footer).
 
 **Gate.** `make check` → PASS · `make test` → green. Post-task summary includes a one-line confirmation of the browser smoke check covering all three polish items.
