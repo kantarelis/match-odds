@@ -10,7 +10,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 
 | Task | Description | Status | Commit |
 |------|-------------|--------|--------|
-| 1 | **Demo polish** — drop the Deploy button (keep the hamburger menu) + remove the "Made with Streamlit" footer + restore the H / D / A bar-chart order | ⬜ Not started | — |
+| 1 | **Demo polish** — drop the Deploy button (keep the hamburger menu) + remove the "Made with Streamlit" footer + restore the H / D / A bar-chart order | ✅ Done | — |
 | 2 | `docs/evaluation.md` — temporal-CV protocol + metric tables (recomputable via `make train`) + a link to `notebooks/02_modeling.ipynb` for reliability diagrams | ⬜ Not started | — |
 | 3 | `docs/model_card.md` — intended use, data sources, metrics, calibration story, limitations, ethics | ⬜ Not started | — |
 | 4 | `docs/architecture.md` — notebook → package → service data-flow diagram (Mermaid) + the leakage / determinism / train-serve-skew invariants | ⬜ Not started | — |
@@ -38,22 +38,23 @@ CI-side reproducibility automation (would need docker-in-docker or significant C
 
 ---
 
-## Task 1 — Demo polish (Deploy button / "Made with Streamlit" footer / H/D/A bar-chart order)
+## Task 1 — Demo polish (Deploy button / "Made with Streamlit" footer / H/D/A bar-chart order) ✅
 
-**Scope (files to touch).**
-- `demo/.streamlit/config.toml` (new): `[client]` section with `toolbarMode = "viewer"`. Hides Deploy / Rerun / Clear cache from the toolbar and the hamburger menu while keeping the menu itself with viewer-side options (Print, record screencast, theme toggle, About). **Not `minimal`** — that would hide the menu entirely.
-- `demo/app.py`:
-  - Add a one-line `st.markdown("<style>footer {visibility: hidden;}</style>", unsafe_allow_html=True)` immediately after `st.set_page_config(...)` to hide the "Made with Streamlit v1.57.0" page-bottom footer. A short code comment notes *why* (Streamlit ships no first-class toggle for the footer) so a future reader does not strip it as cruft.
-  - In `_render_prediction`, replace `st.bar_chart(chart, y="probability")` with an `st.altair_chart(...)` call that pins the x-axis sort to `list(_OUTCOME_LABELS)` (H → D → A) — e.g. `alt.X("outcome:N", sort=list(_OUTCOME_LABELS), title=None)`. The explicit categorical sort overrides Vega-Lite's default alphabetical ordering (which produces A / D / H today). Adds `import altair as alt` at the top.
-- `demo/Dockerfile`: confirm `demo/.streamlit/` is copied into the image (it should already be — the Dockerfile copies the `demo/` directory wholesale — but verify and tweak only if needed).
-- `demo/tests/test_app.py`: if the existing AppTest smoke asserts on the chart object's data, update it for the new chart type; otherwise leave untouched (AppTest doesn't render chart visuals).
+**Outcome.** Three polish items landed, all in `demo/`:
 
-**Acceptance criteria.**
-- `make check` + `make test` green. `altair` is already a transitive dependency of Streamlit (no `requirements-demo.txt` edit needed — verify before importing).
-- Manual smoke: `make up`, open the demo in a browser → no Deploy button in the top-right; **hamburger menu is still present** (Print / screencast / theme toggle / About); no "Made with Streamlit" page-bottom footer; bar chart reads **Home win → Draw → Away win** left-to-right.
-- The CSS injection lives in `demo/app.py` with a comment explaining why (no first-class Streamlit toggle exists for the footer).
+- **`demo/.streamlit/config.toml` (new).** `[client] toolbarMode = "viewer"` hides Streamlit's *developer* options — the Deploy button, Rerun, Clear cache — from both the top-right toolbar and the hamburger menu, while **keeping the menu itself** with the *viewer* options end users find useful (Print, record screencast, theme toggle, About). The file's comment spells out the `viewer` vs `minimal` distinction explicitly so a future reader does not "simplify" it to `minimal` and accidentally hide the menu too. Travels through the Dockerfile's existing `COPY demo/ ./demo/` line — no Dockerfile change needed (verified).
+- **`demo/app.py` — footer hide.** A one-line `st.markdown("<style>footer {visibility: hidden;}</style>", unsafe_allow_html=True)` immediately after `st.set_page_config(...)` removes the "Made with Streamlit v1.57.0" page-bottom badge. Streamlit ships no first-class toggle; the in-file comment warns *"Do not strip as 'cruft' — without it the footer comes back"*.
+- **`demo/app.py` — bar-chart order.** Replaced `st.bar_chart(chart, y="probability")` with `st.altair_chart` over a long-format `chart_data` DataFrame, pinning `alt.X("outcome:N", sort=list(_OUTCOME_LABELS), title=None)`. The explicit categorical sort overrides Vega-Lite's default alphabetical ordering (which had produced **A**way | **D**raw | **H**ome), restoring **Home | Draw | Away**. Added `import altair as alt` at the top; verified `altair 6.1.0` is already a transitive Streamlit dep — no `requirements-demo.txt` edit.
 
-**Gate.** `make check` → PASS · `make test` → green. Post-task summary includes a one-line confirmation of the browser smoke check covering all three polish items.
+**Tests.** `demo/tests/test_app.py` was checked first — the AppTest smoke asserts on metrics and info content, not on the chart object or chart type, so it stayed untouched. All 155 tests still pass.
+
+**Design note (worth flagging at review).** The `toolbarMode` choice went through two rounds with the user: an initial draft picked `minimal` (which hides the menu entirely — too aggressive); a clarification then dropped the config altogether (kept the full toolbar including Deploy); a second clarification surfaced the right answer — `viewer` hides Deploy + the other developer options without losing the menu. The shipped state matches the final clarification. The `viewer` choice is unambiguously documented inline in `demo/.streamlit/config.toml` for the next reader.
+
+**Deviations.** None — final implementation matches the (final) PLAN spec.
+
+**Gate.** `make check` → PASS · `make test` → 155 passed.
+
+**Manual browser smoke (pending — performed by the user via `make up` / `http://localhost:8501`).** Confirm: no Deploy button in the toolbar; hamburger menu (☰) still present with Print / screencast / theme / About; no "Made with Streamlit" footer; bar chart reads **Home win → Draw → Away win** left-to-right.
 
 ---
 
