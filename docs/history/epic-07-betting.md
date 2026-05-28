@@ -12,7 +12,7 @@ Active epic from [`MASTER_PLAN.md`](MASTER_PLAN.md). Workflow and the absolute g
 |------|-------------|--------|--------|
 | 1 | `matchodds.modeling.betting`: overround removal + per-match edge / EV + unit tests | ✅ Done | — |
 | 2 | `matchodds.modeling.betting`: flat-stake positive-EV backtest summary + unit tests | ✅ Done | — |
-| 3 | `notebooks/03_betting_edge.ipynb` narrative + caveats; `make nb-lint` / `make nb-run` green | ⬜ Not started | — |
+| 3 | `notebooks/03_betting_edge.ipynb` narrative + caveats; `make nb-lint` / `make nb-run` green | ✅ Done | — |
 
 **Legend:** ✅ Done · 🔄 In progress · ⬜ Not started
 
@@ -68,26 +68,28 @@ Added six tests to `tests/unit/test_betting.py` keyed off a pinned 4-match synth
 
 ---
 
-## Task 3 — `notebooks/03_betting_edge.ipynb` narrative
+## Task 3 — `notebooks/03_betting_edge.ipynb` narrative ✅
 
-**Scope (files to touch).**
-- `notebooks/03_betting_edge.ipynb` (new): the historical/illustrative appendix. Cells, in order:
-  1. **Caveats block** (top markdown) — historical-only, closing odds, no transaction costs / limits / line moves, no real-money implication.
-  2. **Setup** — load `pipeline.build(write=False)`; show the rows that carry usable closing odds (sample fixtures committed under `tests/fixtures/sample/` keep CI green when real odds are missing).
-  3. **Overround removal** — apply `betting.implied_probabilities` to a small sample; show that the raw `1/odds` exceeds 1 (the overround / bookmaker hold) and the normalised vector sums to 1.
-  4. **Model vs book** — refit the selected model (per `models/v1.metadata.json`, currently logistic) on each `TimeOrderedSplit` fold's training slice, accumulate predictions on the strictly-later test slice; plot the distribution of `betting.edge` across out-of-sample matches.
-  5. **Flat-stake EV>0 backtest** — call `betting.backtest` on the accumulated out-of-sample predictions vs market odds, at edge thresholds 0% / 2% / 5%; render a small summary table (ROI, n_bets, win_rate per threshold) and a cumulative-PnL line plot.
-  6. **Takeaways + repeat caveats** — frame everything as historical / illustrative.
-- Re-execute headless. Notebook stores no outputs (repo convention — see `notebooks/02_modeling.ipynb`).
+**Outcome.** Added `notebooks/03_betting_edge.ipynb` — eleven cells, all importing from `matchodds.modeling.betting` (no logic redefined inline):
 
-**Acceptance criteria.**
-- `make nb-lint` + `make nb-run` green; the notebook imports from `matchodds.modeling.betting` (no logic re-defined inline); the caveats block + the closing markdown both restate the historical-only / no-real-money framing.
-- `make check` + `make test` stay green.
+1. **Caveats block** (top markdown) — historical-only, closing odds, hold removed but not modelled, transaction costs ignored, small-sample variance, no real-money implication.
+2. **Setup header** + **setup code** — `pipeline.build(write=False)` → filter to rows where all three closing odds are finite and > 1.0 (the rejection rule `betting.implied_probabilities` enforces) → read selected-model name from `models/v1.metadata.json`. The real feature table has 20,293 matches with usable closing odds; 16,825 of them end up out-of-sample under `TimeOrderedSplit`.
+3. **Overround removal** (md + code) — 5-row sample showing raw `1/odds` sum (the bookmaker hold, ~2%) and the normalised implied probabilities; pure `betting.implied_probabilities` call.
+4. **Model vs book — out-of-sample edge** (md + code) — `TimeOrderedSplit`; per fold the **selected** logistic model is refit on the training slice via the same `calibration.calibrate(..., method="sigmoid", cv=safe_calibration_cv(train))` path the shipped artifact uses, then scored on the strictly-later test slice. The committed `models/v1.joblib` is **deliberately not used** here (it was fit on all data — would be in-sample). Histogram of `betting.edge` across the held-out rows.
+5. **Flat-stake EV>0 backtest** (md + table-code + plot-code) — `betting.backtest` at 0% / 2% / 5% thresholds; pandas table indexed by threshold; cumulative-PnL line plot over time-ordered match dates.
+6. **Takeaways + repeat caveats** — efficient-market framing (see deviation 1 below).
 
-**Gate.** `make check` → PASS; `make test` → green; `make nb-lint` + `make nb-run` → green.
+Notebook stores no outputs (repo convention). `make nb-run` executes it in ~3s end-to-end (logistic is fast; 5 fold refits dominate the runtime).
+
+**Observed real-data backtest result** (one-time snapshot, not asserted; will drift with future retrains): negative ROI at every threshold (0% → −6.2%, 2% → −6.5%, 5% → −7.3%) across the 16,825 out-of-sample matches. This is the honest, calibrated outcome: closing odds are an efficient benchmark and a simple feature-engineered logistic does not beat them.
+
+**Deviations (with reason).**
+1. **Takeaways rewritten after seeing real-data numbers.** The initial draft implied a positive-ROI outcome was the expected baseline ("…the cumulative-PnL curve still shows the path-dependence any backtest will: a positive sample-period ROI is not a guarantee of forward returns"). With negative ROI observed at every threshold, that framing was tone-deaf. The shipped takeaways are direct about efficient-market reality: *"closing odds are a very hard benchmark"*, *"raising the edge threshold doesn't transform a negative-edge strategy into a positive one"*, *"what this exercise demonstrates is that the shipped model is honest (calibrated + proper-scored), not a profit engine — beating the closing market is a much harder problem and explicitly out of scope for this repo"*. Same cell count, same structure; just honest framing aligned with CLAUDE.md's *"no real-money framing"* constraint.
+
+**Gate.** `make check` → PASS · `make test` → 155 passed · `make nb-lint` + `make nb-run` → green.
 
 ---
 
-## Definition of done (Epic 07)
+## Definition of done (Epic 07) ✅
 
-`matchodds.modeling.betting` exposes overround removal, per-match edge / EV, and a flat-stake EV>0 backtest summary, all with pinned unit tests; `notebooks/03_betting_edge.ipynb` runs headless and tells the historical-only model-vs-book story with explicit caveats; the shipped `models/v1.joblib` and the serving layer are untouched. On close-out: mark Epic 07 Done in `MASTER_PLAN.md` with the commit range and archive this file to `docs/history/epic-07-betting.md`.
+`matchodds.modeling.betting` exposes overround removal, per-match edge / EV, and a flat-stake EV>0 backtest summary, all with pinned unit tests; `notebooks/03_betting_edge.ipynb` runs headless and tells the historical-only model-vs-book story with explicit caveats; the shipped `models/v1.joblib` and the serving layer are untouched.
